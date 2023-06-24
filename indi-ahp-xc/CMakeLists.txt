@@ -6,7 +6,8 @@ set (AHP_XC_VERSION_MINOR 0)
 
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake_modules/")
-set(BIN_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin")
+
+include(CMakeCommon)
 
 find_package(AHPXC REQUIRED)
 find_package(Nova REQUIRED)
@@ -21,14 +22,15 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/indi_ahp_xc.xml.cmake ${CMAKE_CURRENT
 include_directories( ${CMAKE_CURRENT_BINARY_DIR})
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR})
 include_directories( ${INDI_INCLUDE_DIR})
+
+############# AHP XC Correlator ###############
+if (CFITSIO_FOUND AND AHP_XC_FOUND AND NOVA_FOUND)
+
 include_directories( ${CFITSIO_INCLUDE_DIR})
 include_directories( ${NOVA_INCLUDE_DIR})
 include_directories( ${AHP_XC_INCLUDE_DIR})
 
-include(CMakeCommon)
-
-############# AHP_XC CCD ###############
-if (CFITSIO_FOUND)
+set(BIN_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/bin")
 
 set(AHP_XC_SRCS
         ${CMAKE_CURRENT_SOURCE_DIR}/indi_ahp_xc.cpp
@@ -40,6 +42,7 @@ target_link_libraries(indi_ahp_xc ${INDI_LIBRARIES} ${AHP_XC_LIBRARIES} ${NOVA_L
 
 install(TARGETS indi_ahp_xc RUNTIME DESTINATION bin)
 
-endif (CFITSIO_FOUND)
-
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/indi_ahp_xc.xml DESTINATION ${INDI_DATA_DIR})
+
+endif (CFITSIO_FOUND AND AHP_XC_FOUND AND NOVA_FOUND)
+

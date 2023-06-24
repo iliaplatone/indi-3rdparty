@@ -66,6 +66,9 @@ public:
         free(lineEdgeTriggerS);
         free(lineEdgeTriggerSP);
 
+        free(lineDifferentialS);
+        free(lineDifferentialSP);
+
         free(lineLocationN);
         free(lineLocationNP);
 
@@ -84,6 +87,9 @@ public:
         free(totalcorrelations);
         free(delay);
         free(baselines);
+
+        threadsRunning = false;
+        readThread.join();
     }
 
     virtual void ISGetProperties(const char *dev) override;
@@ -109,7 +115,7 @@ protected:
     virtual void TimerHit() override;
     virtual void addFITSKeywords(fitsfile *fptr, uint8_t* buf, int len) override;
 
-    virtual bool Connect() override;
+    virtual bool Handshake() override;
 
 private:
 
@@ -123,7 +129,7 @@ private:
         ENABLE_CAPTURE = 13
     };
 
-    std::thread *readThread;
+    std::thread readThread;
 
     INumber *correlationsN;
     INumberVectorProperty correlationsNP;
@@ -142,6 +148,9 @@ private:
 
     ISwitch *lineEdgeTriggerS;
     ISwitchVectorProperty *lineEdgeTriggerSP;
+
+    ISwitch *lineDifferentialS;
+    ISwitchVectorProperty *lineDifferentialSP;
 
     INumber *lineLocationN;
     INumberVectorProperty *lineLocationNP;
@@ -171,7 +180,7 @@ private:
     dsp_stream_p *crosscorrelations_str;
     dsp_stream_p *plot_str;
 
-    INumber settingsN[2];
+    INumber settingsN[3];
     INumberVectorProperty settingsNP;
 
     unsigned int clock_frequency;
@@ -182,21 +191,21 @@ private:
     void Callback();
     bool callHandshake();
     // Utility functions
+    void sendFile(IBLOB* Blobs, unsigned int len);
+    void* createFITS(int bpp, size_t *size, dsp_stream *buf);
+    uint8_t* getBuffer(dsp_stream_p in, int bpp, int *dims, long **sizes);
+    int getFileIndex(const char * dir, const char * prefix, const char * ext);
     double CalcTimeLeft();
     void  setupParams();
     bool SendChar(char);
     bool SendCommand(it_cmd cmd, unsigned char value = 0);
-    void ActiveLine(unsigned int, bool, bool, bool, bool);
+    void ActiveLine(unsigned int, bool, bool, bool, bool, bool);
     void EnableCapture(bool start);
-    void sendFile(IBLOB* Blobs, IBLOBVectorProperty BlobP, unsigned int len);
-    void* createFITS(int bpp, size_t *size, dsp_stream *buf);
-    uint8_t* getBuffer(dsp_stream_p in, uint32_t *dims, int **sizes);
-    int getFileIndex(const char * dir, const char * prefix, const char * ext);
     // Struct to keep timing
     struct timeval ExpStart;
     double IntegrationRequest;
     double IntegrationStart;
-    bool threadsRunning;
+    bool threadsRunning { true };
 
     inline double getCurrentTime()
     {
