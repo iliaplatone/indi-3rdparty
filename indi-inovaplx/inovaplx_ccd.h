@@ -25,6 +25,8 @@ public:
     void ISGetProperties(const char *dev);
 
     void CaptureThread();
+    inova_ctx getContext() { return context; }
+
 protected:
 
     // General device functions
@@ -48,6 +50,7 @@ protected:
     IPState GuideSouth(uint32_t ms);
 
 private:
+    inova_ctx context;
 
     // Utility functions
     float CalcTimeLeft();

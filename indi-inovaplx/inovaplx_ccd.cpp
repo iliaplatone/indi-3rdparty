@@ -29,17 +29,17 @@ std::unique_ptr<INovaCCD> inova(new INovaCCD());
 
 static void timerWestEast(void * arg)
 {
-    INDI_UNUSED(arg);
+    INovaCCD *sender = static_cast<INovaCCD*>(arg);
     DIR |= 0x09;
-    iNovaSDK_SendST4(DIR);
+    iNovaSDK_SendST4(sender->getContext(), DIR);
     IERmCallback(timerWE);
 }
 
 static void timerNorthSouth(void * arg)
 {
-    INDI_UNUSED(arg);
+    INovaCCD *sender = static_cast<INovaCCD*>(arg);
     DIR |= 0x06;
-    iNovaSDK_SendST4(DIR);
+    iNovaSDK_SendST4(sender->getContext(), DIR);
     IERmCallback(timerNS);
 }
 
@@ -54,26 +54,26 @@ bool INovaCCD::Connect()
     const char *Sn;
     if(iNovaSDK_MaxCamera() > 0)
     {
-        Sn = iNovaSDK_OpenCamera(1);
+        Sn = iNovaSDK_OpenCamera(&context, 1);
         LOGF_DEBUG("Serial Number: %s", Sn);
         if(Sn[0] >= '0' && Sn[0] < '3')
         {
-            iNovaSDK_InitST4();
-            LOGF_INFO("Camera model is %s", iNovaSDK_GetName());
-            iNovaSDK_InitCamera(RESOLUTION_FULL);
+            iNovaSDK_InitST4(getContext());
+            LOGF_INFO("Camera model is %s", iNovaSDK_GetName(getContext()));
+            iNovaSDK_InitCamera(getContext(), RESOLUTION_FULL);
             //maxW = iNovaSDK_GetImageWidth();
             //maxH = iNovaSDK_GetImageHeight();
 
-            iNovaSDK_SetFrameSpeed(FRAME_SPEED_LOW);
-            iNovaSDK_CancelLongExpTime();
-            iNovaSDK_OpenVideo();
+            iNovaSDK_SetFrameSpeed(getContext(), FRAME_SPEED_LOW);
+            iNovaSDK_CancelLongExpTime(getContext());
+            iNovaSDK_OpenVideo(getContext());
 
             CameraPropertiesNP.s = IPS_IDLE;
 
             // Set camera capabilities
-            uint32_t cap = CCD_CAN_ABORT | CCD_CAN_BIN | CCD_CAN_SUBFRAME | (iNovaSDK_HasST4() ? CCD_HAS_ST4_PORT : 0);
+            uint32_t cap = CCD_CAN_ABORT | CCD_CAN_BIN | CCD_CAN_SUBFRAME | (iNovaSDK_HasST4(getContext()) ? CCD_HAS_ST4_PORT : 0);
             SetCCDCapability(cap);
-            if(iNovaSDK_HasColorSensor())
+            if(iNovaSDK_HasColorSensor(getContext()))
             {
                 IUSaveText(&BayerT[2], "RGGB");
                 IDSetText(&BayerTP, nullptr);
@@ -82,7 +82,7 @@ bool INovaCCD::Connect()
 
             return true;
         }
-        iNovaSDK_CloseCamera();
+        iNovaSDK_CloseCamera(getContext());
     }
     LOG_ERROR("No cameras opened.");
     return false;
@@ -90,9 +90,9 @@ bool INovaCCD::Connect()
 
 bool INovaCCD::Disconnect()
 {
-    iNovaSDK_SensorPowerDown();
-    iNovaSDK_CloseVideo();
-    iNovaSDK_CloseCamera();
+    iNovaSDK_SensorPowerDown(getContext());
+    iNovaSDK_CloseVideo(getContext());
+    iNovaSDK_CloseCamera(getContext());
     return true;
 }
 
@@ -167,11 +167,11 @@ bool INovaCCD::updateProperties()
     if (isConnected())
     {
         // Define our properties
-        IUSaveText(&iNovaInformationT[0], iNovaSDK_GetName());
-        IUSaveText(&iNovaInformationT[1], iNovaSDK_SensorName());
-        IUSaveText(&iNovaInformationT[2], iNovaSDK_SerialNumber());
-        IUSaveText(&iNovaInformationT[3], (iNovaSDK_HasST4() ? "Yes" : "No"));
-        IUSaveText(&iNovaInformationT[4], (iNovaSDK_HasColorSensor() ? "Yes" : "No"));
+        IUSaveText(&iNovaInformationT[0], iNovaSDK_GetName(getContext()));
+        IUSaveText(&iNovaInformationT[1], iNovaSDK_SensorName(getContext()));
+        IUSaveText(&iNovaInformationT[2], iNovaSDK_SerialNumber(getContext()));
+        IUSaveText(&iNovaInformationT[3], (iNovaSDK_HasST4(getContext()) ? "Yes" : "No"));
+        IUSaveText(&iNovaInformationT[4], (iNovaSDK_HasColorSensor(getContext()) ? "Yes" : "No"));
         defineProperty(&iNovaInformationTP);
         defineProperty(&CameraPropertiesNP);
 
@@ -196,8 +196,8 @@ bool INovaCCD::updateProperties()
 ***************************************************************************************/
 void INovaCCD::setupParams()
 {
-    int bpp = iNovaSDK_GetDataWide() > 0 ? 16 : 8;
-    SetCCDParams(iNovaSDK_GetImageWidth(), iNovaSDK_GetImageHeight(), bpp, iNovaSDK_GetPixelSizeX(), iNovaSDK_GetPixelSizeY());
+    int bpp = iNovaSDK_GetDataWide(getContext()) > 0 ? 16 : 8;
+    SetCCDParams(iNovaSDK_GetImageWidth(getContext()), iNovaSDK_GetImageHeight(getContext()), bpp, iNovaSDK_GetPixelSizeX(getContext()), iNovaSDK_GetPixelSizeY(getContext()));
 
     // Let's calculate how much memory we need for the primary CCD buffer
     int nbuf;
@@ -212,7 +212,8 @@ void INovaCCD::setupParams()
 bool INovaCCD::StartExposure(float duration)
 {
     double expTime = 1000.0 * duration;
-    iNovaSDK_SetExpTime(expTime);
+    iNovaSDK_CancelLongExpTime(getContext());
+    iNovaSDK_SetExpTime(getContext(), expTime);
 
     ExposureRequest = duration;
     PrimaryCCD.setExposureDuration(ExposureRequest);
@@ -229,7 +230,7 @@ bool INovaCCD::StartExposure(float duration)
 ***************************************************************************************/
 bool INovaCCD::AbortExposure()
 {
-    iNovaSDK_CancelLongExpTime();
+    iNovaSDK_CancelLongExpTime(getContext());
     InExposure = false;
     return true;
 }
@@ -264,8 +265,8 @@ bool INovaCCD::ISNewNumber(const char *dev, const char *name, double values[], c
     {
         IUUpdateNumber(&CameraPropertiesNP, values, names, n);
 
-        iNovaSDK_SetAnalogGain(static_cast<int16_t>(CameraPropertiesN[CCD_GAIN_N].value));
-        iNovaSDK_SetBlackLevel(static_cast<int16_t>(CameraPropertiesN[CCD_BLACKLEVEL_N].value));
+        iNovaSDK_SetAnalogGain(getContext(), static_cast<int16_t>(CameraPropertiesN[CCD_GAIN_N].value));
+        iNovaSDK_SetBlackLevel(getContext(), static_cast<int16_t>(CameraPropertiesN[CCD_BLACKLEVEL_N].value));
 
         CameraPropertiesNP.s = IPS_OK;
         IDSetNumber(&CameraPropertiesNP, nullptr);
@@ -313,18 +314,15 @@ void INovaCCD::TimerHit()
             // Just update time left in client
             PrimaryCCD.setExposureLeft(timeleft);
         }
-        else
+        /* We're done exposing */
+        LOG_INFO("Exposure done, downloading image...");
+        RawData = (unsigned char*)iNovaSDK_GrabFrame(getContext());
+        if(RawData != nullptr)
         {
-            /* We're done exposing */
-            LOG_INFO("Exposure done, downloading image...");
-            RawData = (unsigned char*)iNovaSDK_GrabFrame();
-            if(RawData != nullptr)
-            {
-                // We're no longer exposing...
-                InExposure = false;
+            // We're no longer exposing...
+            InExposure = false;
 
-                grabImage();
-            }
+            grabImage();
         }
     }
 
@@ -336,7 +334,7 @@ IPState INovaCCD::GuideEast(uint32_t ms)
 {
     DIR |= 0x09;
     DIR &= 0x0E;
-    iNovaSDK_SendST4(DIR);
+    iNovaSDK_SendST4(getContext(), DIR);
     timerWE = IEAddTimer(ms, timerWestEast, (void *)this);
     return IPS_IDLE;
 }
@@ -345,7 +343,7 @@ IPState INovaCCD::GuideWest(uint32_t ms)
 {
     DIR |= 0x09;
     DIR &= 0x07;
-    iNovaSDK_SendST4(DIR);
+    iNovaSDK_SendST4(getContext(), DIR);
     timerWE = IEAddTimer(ms, timerWestEast, (void *)this);
     return IPS_IDLE;
 }
@@ -354,7 +352,7 @@ IPState INovaCCD::GuideNorth(uint32_t ms)
 {
     DIR |= 0x06;
     DIR &= 0x0D;
-    iNovaSDK_SendST4(DIR);
+    iNovaSDK_SendST4(getContext(), DIR);
     timerNS = IEAddTimer(ms, timerNorthSouth, (void *)this);
     return IPS_IDLE;
 }
@@ -363,7 +361,7 @@ IPState INovaCCD::GuideSouth(uint32_t ms)
 {
     DIR |= 0x06;
     DIR &= 0x0B;
-    iNovaSDK_SendST4(DIR);
+    iNovaSDK_SendST4(getContext(), DIR);
     timerNS = IEAddTimer(ms, timerNorthSouth, (void *)this);
     return IPS_IDLE;
 }
@@ -375,7 +373,8 @@ void INovaCCD::grabImage()
     unsigned char * image = PrimaryCCD.getFrameBuffer();
     if(image != nullptr)
     {
-        int Bpp = iNovaSDK_GetDataWide() > 0 ? 2 : 1;
+        guard.lock();
+        int Bpp = iNovaSDK_GetDataWide(getContext()) > 0 ? 2 : 1;
         int p = 0;
 
         int binX = PrimaryCCD.getBinX();
