@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project (libinovasdk)
 
-set (INOVASDK_VERSION "1.3.6")
+set (INOVASDK_VERSION "1.3.7")
 set (INOVASDK_SOVERSION "1")
 
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
@@ -11,7 +11,7 @@ include (InstallImported)
 
 add_library (inovasdk SHARED IMPORTED)
 
-set_target_properties (inovasdk PROPERTIES VERSION 1.3.6 SOVERSION 1)
+set_target_properties (inovasdk PROPERTIES VERSION 1.3.7 SOVERSION 1)
 
 if (UNIX AND NOT WIN32 AND NOT APPLE)
 
@@ -34,7 +34,7 @@ if (UNIX AND NOT WIN32 AND NOT APPLE)
 endif ()
 
 # Install header files
-install (FILES inovasdk.h DESTINATION include/inovasdk)
+install (FILES inovasdk.h DESTINATION include/inova)
 
 # Install library
 install_imported (TARGETS inovasdk DESTINATION ${CMAKE_INSTALL_LIBDIR})

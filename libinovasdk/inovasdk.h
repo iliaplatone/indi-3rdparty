@@ -2,7 +2,7 @@
 #ifndef _INOVASDK_H
 #define _INOVASDK_H
 
-#define INOVASDK_VERSION 1.3.6 /*!< Current SDK version */
+#define INOVASDK_VERSION 1.3.7 /*!< Current SDK version */
 
 #define RESOLUTION_FULL 0 /*!< Full Resolution */
 #define RESOLUTION_ROI 1 /*!< ROI resolution */
@@ -49,147 +49,147 @@
 #define ROI_HEIGHT_MASK		0xfffe
 
 #ifdef  __cplusplus
-extern "C" {
+#define CXX_EXPORT extern "C"
 #endif
-#ifndef DLL_EXPORT
 #ifdef _WIN32
-#define DLL_EXPORT __declspec(dllexport)
+#define DLL_EXPORT CXX_EXPORT __declspec(dllexport)
 #else
-#define DLL_EXPORT extern
-#endif
+#define DLL_EXPORT CXX_EXPORT
 #endif
 
-/*! \fn void iNovaSDK_MaxCamera()
+typedef void* inova_ctx;
+
+/*! \fn void iNovaSDK_MaxCamera(inova_ctx context)
  *  \brief Returns the number of cameras connected.
  */
 DLL_EXPORT int iNovaSDK_MaxCamera();
-/*! \fn void iNovaSDK_CloseCamera()
+/*! \fn void iNovaSDK_CloseCamera(inova_ctx context)
  *  \brief Closes the current camera.
  */
-DLL_EXPORT void iNovaSDK_CloseCamera();
-/*! \fn void iNovaSDK_OpenCamera(int n)
+DLL_EXPORT void iNovaSDK_CloseCamera(inova_ctx context);
+/*! \fn void iNovaSDK_OpenCamera(inova_ctx context, int n)
  *  \brief Detects and opens the selected camera.
  *  @param n: selected camera.
  *  @return Serial number
  */
-DLL_EXPORT  const char * iNovaSDK_OpenCamera(int n);
-/*! \fn int iNovaSDK_SensorID()
+DLL_EXPORT  const char * iNovaSDK_OpenCamera(inova_ctx *context, int n);
+/*! \fn int iNovaSDK_SensorID(inova_ctx context)
  *  \brief Returns the camera's sensor code.
  *  @return INOVA_SENSOR_ID Sensor code.
  */
-DLL_EXPORT  const char * iNovaSDK_SensorName();
-/*! \fn int iNovaSDK_SensorName()
+DLL_EXPORT  const char * iNovaSDK_SensorName(inova_ctx context);
+/*! \fn int iNovaSDK_SensorName(inova_ctx context)
  *  \brief Returns the camera's sensor name.
  *  @return Sensor name.
  */
-DLL_EXPORT int iNovaSDK_SensorID();
-/*! \fn int iNovaSDK_GetArraySize()
+DLL_EXPORT int iNovaSDK_SensorID(inova_ctx context);
+/*! \fn int iNovaSDK_GetArraySize(inova_ctx context)
  *  \brief Returns the size of the frame in pixels.
  *  @return Size current number of pixels.
  */
-DLL_EXPORT int iNovaSDK_GetArraySize();
-/*! \fn char * iNovaSDK_SerialNumber()
+DLL_EXPORT int iNovaSDK_GetArraySize(inova_ctx context);
+/*! \fn char * iNovaSDK_SerialNumber(inova_ctx context)
  *  \brief Returns the camera's serial number.
  *  @return serial number.
  */
-DLL_EXPORT  const char * iNovaSDK_SerialNumber();
-/*! \fn char * iNovaSDK_GetName()
+DLL_EXPORT  const char * iNovaSDK_SerialNumber(inova_ctx context);
+/*! \fn char * iNovaSDK_GetName(inova_ctx context)
  *  \brief Returns the camera's commercial name.
  *  @return Current camera's commercial name.
  */
-DLL_EXPORT  const char * iNovaSDK_GetName();
-/*! \fn char * iNovaSDK_RecvUartData()
+DLL_EXPORT  const char * iNovaSDK_GetName(inova_ctx context);
+/*! \fn char * iNovaSDK_RecvUartData(inova_ctx context)
  *  \brief Reads data from camera's serial port.
  *  @return Received data.
  */
-DLL_EXPORT const char * iNovaSDK_RecvUartData();
-/*! \fn bool iNovaSDK_SendUartData(unsigned char *Buffer, int len)
+DLL_EXPORT const char * iNovaSDK_RecvUartData(inova_ctx context);
+/*! \fn bool iNovaSDK_SendUartData(inova_ctx context, unsigned char *Buffer, int len)
  *  \brief Sends data from camera's serial port.
  *  @param Buffer string to be sent.
  *  @param len Length of the string sent.
  *  @return true if success, false if error.
  */
-DLL_EXPORT bool iNovaSDK_SendUartData(unsigned char *Buffer, int len);
-/*! \fn void iNovaSDK_InitUart(int BaudRate)
+DLL_EXPORT bool iNovaSDK_SendUartData(inova_ctx context, unsigned char *Buffer, int len);
+/*! \fn void iNovaSDK_InitUart(inova_ctx context, int BaudRate)
  *  \brief Inits serial port.
  *  @param BaudRate speed of the serial port.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_InitUart(int BaudRate);
-/*! \fn bool iNovaSDK_InitCamera(int Resolution)
+DLL_EXPORT void iNovaSDK_InitUart(inova_ctx context, int BaudRate);
+/*! \fn bool iNovaSDK_InitCamera(inova_ctx context, int Resolution)
  *  \brief Inits the camera, in BIN mode resolution is halfed respect FULL resolution, but intensities are doubled.
  *  @param Resolution the resolution to use.
  *  @return true if success, false if error.
  */
-DLL_EXPORT bool iNovaSDK_InitCamera(int resolution);
-/*! \fn void iNovaSDK_OpenVideo()
+DLL_EXPORT bool iNovaSDK_InitCamera(inova_ctx context, int resolution);
+/*! \fn void iNovaSDK_OpenVideo(inova_ctx context)
  *  \brief Starts video capture, must be called after camera initialization.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_OpenVideo();
-/*! \fn void iNovaSDK_CloseVideo()
+DLL_EXPORT void iNovaSDK_OpenVideo(inova_ctx context);
+/*! \fn void iNovaSDK_CloseVideo(inova_ctx context)
  *  \brief Stops video capture.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_CloseVideo();
-/*! \fn unsigned char * iNovaSDK_GrabFrame()
+DLL_EXPORT void iNovaSDK_CloseVideo(inova_ctx context);
+/*! \fn unsigned char * iNovaSDK_GrabFrame(inova_ctx context)
  *  \brief Returns the frame grabbed, or NULL if the frame is not ready. In FAST mode the frame is ordered in 8bit words, in NORMAL and LOW speed modes it is ordered in 16bit words (pay attention to the endianness!).
  *  @return the image array, or NULL.
  */
-DLL_EXPORT unsigned char * iNovaSDK_GrabFrame();
-/*! \fn void iNovaSDK_GetRowTime()
+DLL_EXPORT unsigned char * iNovaSDK_GrabFrame(inova_ctx context);
+/*! \fn void iNovaSDK_GetRowTime(inova_ctx context)
  *  \brief Returns the horizontal sync time in microseconds.
  *  @return the line time in microseconds.
  */
-DLL_EXPORT double iNovaSDK_GetRowTime();
-/*! \fn int iNovaSDK_GetExpTime()
+DLL_EXPORT double iNovaSDK_GetRowTime(inova_ctx context);
+/*! \fn int iNovaSDK_GetExpTime(inova_ctx context)
  *  \brief Returns the exposure time in milliseconds.
  *  @return the total integration time.
  */
-DLL_EXPORT double iNovaSDK_GetExpTime();
-/*! \fn void iNovaSDK_SetExpTime(double x)
+DLL_EXPORT double iNovaSDK_GetExpTime(inova_ctx context);
+/*! \fn void iNovaSDK_SetExpTime(inova_ctx context, double x)
  *  \brief Sets exposure time.
  *  @param x Exposure time.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SetExpTime(double x);
-/*! \fn void iNovaSDK_CancelLongExpTime()
+DLL_EXPORT void iNovaSDK_SetExpTime(inova_ctx context, double x);
+/*! \fn void iNovaSDK_CancelLongExpTime(inova_ctx context)
  *  \brief Cancel current exposure.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_CancelLongExpTime();
-/*! \fn unsigned int iNovaSDK_GetAnalogGain()
+DLL_EXPORT void iNovaSDK_CancelLongExpTime(inova_ctx context);
+/*! \fn unsigned int iNovaSDK_GetAnalogGain(inova_ctx context)
  *  \brief Returns the analog gain value.
  *  @return Analog gain value
  */
-DLL_EXPORT int iNovaSDK_GetAnalogGain();
-/*! \fn void iNovaSDK_SetAnalogGain(int Gain)
+DLL_EXPORT int iNovaSDK_GetAnalogGain(inova_ctx context);
+/*! \fn void iNovaSDK_SetAnalogGain(inova_ctx context, int Gain)
  *  \brief Sets analog gain.
  *  @param Gain analog gain value.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SetAnalogGain(int AnalogGain);
-/*! \fn void iNovaSDK_MaxImageHeight()
+DLL_EXPORT void iNovaSDK_SetAnalogGain(inova_ctx context, int AnalogGain);
+/*! \fn void iNovaSDK_MaxImageHeight(inova_ctx context)
  *  \brief Returns the maximum Y resolution in pixels.
  *  @return Height max image height
  */
-DLL_EXPORT int iNovaSDK_MaxImageHeight();
-/*! \fn void iNovaSDK_MaxImageWidth()
+DLL_EXPORT int iNovaSDK_MaxImageHeight(inova_ctx context);
+/*! \fn void iNovaSDK_MaxImageWidth(inova_ctx context)
  *  \brief Returns the maximum X resolution in pixels.
  *  @return Width max image width
  */
-DLL_EXPORT int iNovaSDK_MaxImageWidth();
-/*! \fn void iNovaSDK_GetImageHeight()
+DLL_EXPORT int iNovaSDK_MaxImageWidth(inova_ctx context);
+/*! \fn void iNovaSDK_GetImageHeight(inova_ctx context)
  *  \brief Returns the current Y resolution in pixels.
  *  @return Height image height
  */
-DLL_EXPORT int iNovaSDK_GetImageHeight();
-/*! \fn void iNovaSDK_GetImageWidth()
+DLL_EXPORT int iNovaSDK_GetImageHeight(inova_ctx context);
+/*! \fn void iNovaSDK_GetImageWidth(inova_ctx context)
  *  \brief Returns the current X resolution in pixels.
  *  @return Height image width
  */
-DLL_EXPORT int iNovaSDK_GetImageWidth();
-/*! \fn void iNovaSDK_SetROI(int HOff, int VOff, int Width, int Height)
+DLL_EXPORT int iNovaSDK_GetImageWidth(inova_ctx context);
+/*! \fn void iNovaSDK_SetROI(inova_ctx context, int HOff, int VOff, int Width, int Height)
  *  \brief Sets ROI rectangle.
  *  @param HOff X start offset.
  *  @param VOff Y start offset.
@@ -197,147 +197,144 @@ DLL_EXPORT int iNovaSDK_GetImageWidth();
  *  @param Height height of the rectangle in pixels.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SetROI(int HOff, int VOff, int Width, int Height);
-/*! \fn int iNovaSDK_GetBinX()
+DLL_EXPORT void iNovaSDK_SetROI(inova_ctx context, int HOff, int VOff, int Width, int Height);
+/*! \fn int iNovaSDK_GetBinX(inova_ctx context)
  *  \brief Returns the X binning value.
  *  @return int BinX value.
  */
-DLL_EXPORT int iNovaSDK_GetBinX();
-/*! \fn void iNovaSDK_SetBinX(int bin)
+DLL_EXPORT int iNovaSDK_GetBinX(inova_ctx context);
+/*! \fn void iNovaSDK_SetBinX(inova_ctx context, int bin)
  *  \brief Sets X binning value.
  *  @param bin BinX value.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SetBinX(int bin);
-/*! \fn int iNovaSDK_GetBinY()
+DLL_EXPORT void iNovaSDK_SetBinX(inova_ctx context, int bin);
+/*! \fn int iNovaSDK_GetBinY(inova_ctx context)
  *  \brief Returns the Y binning value.
  *  @return int BinY value.
  */
-DLL_EXPORT int iNovaSDK_GetBinY();
-/*! \fn void iNovaSDK_SetBinY(int bin)
+DLL_EXPORT int iNovaSDK_GetBinY(inova_ctx context);
+/*! \fn void iNovaSDK_SetBinY(inova_ctx context, int bin)
  *  \brief Sets Y binning value.
  *  @param bin BinY value.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SetBinY(int bin);
-/*! \fn int iNovaSDK_GetFrameSpeed()
+DLL_EXPORT void iNovaSDK_SetBinY(inova_ctx context, int bin);
+/*! \fn int iNovaSDK_GetFrameSpeed(inova_ctx context)
  *  \brief Returns the frame speed.
  *  @return int speed frame speed.
  */
-DLL_EXPORT int iNovaSDK_GetFrameSpeed();
-/*! \fn void iNovaSDK_SetFrameSpeed(int speed)
+DLL_EXPORT int iNovaSDK_GetFrameSpeed(inova_ctx context);
+/*! \fn void iNovaSDK_SetFrameSpeed(inova_ctx context, int speed)
  *  \brief Sets frame speed.
  *  @param speed Frame speed.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SetFrameSpeed(int speed);
-/*! \fn unsigned char iNovaSDK_GetBlackLevel()
+DLL_EXPORT void iNovaSDK_SetFrameSpeed(inova_ctx context, int speed);
+/*! \fn unsigned char iNovaSDK_GetBlackLevel(inova_ctx context)
  *  \brief Returns the Black level.
  *  @return Black level value
  */
-DLL_EXPORT int iNovaSDK_GetBlackLevel();
-/*! \fn void iNovaSDK_SetBlackLevel(int Level)
+DLL_EXPORT int iNovaSDK_GetBlackLevel(inova_ctx context);
+/*! \fn void iNovaSDK_SetBlackLevel(inova_ctx context, int Level)
  *  \brief Sets black level.
  *  @param Level value of black level.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SetBlackLevel(int Level);
-/*! \fn int iNovaSDK_GetDataWide()
+DLL_EXPORT void iNovaSDK_SetBlackLevel(inova_ctx context, int Level);
+/*! \fn int iNovaSDK_GetDataWide(inova_ctx context)
  *  \brief Returns the data width (bit depth).
  *  @return DATA_WIDTH_12 for 12/10bpp, DATA_WIDTH_8 for 8bpp
  */
-DLL_EXPORT int iNovaSDK_GetDataWide();
-/*! \fn void iNovaSDK_SetDataWide(int WordWidth)
+DLL_EXPORT int iNovaSDK_GetDataWide(inova_ctx context);
+/*! \fn void iNovaSDK_SetDataWide(inova_ctx context, int WordWidth)
  *  \brief Sets Bit depht.
  *  @param WordWidth bit depht.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SetDataWide(int WordWidth);
-/*! \fn void iNovaSDK_SensorPowerDown()
+DLL_EXPORT void iNovaSDK_SetDataWide(inova_ctx context, int WordWidth);
+/*! \fn void iNovaSDK_SensorPowerDown(inova_ctx context)
  *  \brief Powers off the imaging sensor.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SensorPowerDown();
-/*! \fn void iNovaSDK_SendST4(int value)
+DLL_EXPORT void iNovaSDK_SensorPowerDown(inova_ctx context);
+/*! \fn void iNovaSDK_SendST4(inova_ctx context, int value)
  *  \brief Sends direction to autoguider port.
  *  @param value direction for autoguider port.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SendST4(int value);
-/*! \fn void iNovaSDK_InitST4()
+DLL_EXPORT void iNovaSDK_SendST4(inova_ctx context, int value);
+/*! \fn void iNovaSDK_InitST4(inova_ctx context)
  *  \brief Inits autoguider port.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_InitST4();
-/*! \fn void iNovaSDK_SetHB(int HB)
+DLL_EXPORT void iNovaSDK_InitST4(inova_ctx context);
+/*! \fn void iNovaSDK_SetHB(inova_ctx context, int HB)
  *  \brief Sets horizontal blanking (CMOS sensors only).
  *  @param HB horizontal blanking.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SetHB(int pHB);
-/*! \fn void iNovaSDK_SetVB(int VB)
+DLL_EXPORT void iNovaSDK_SetHB(inova_ctx context, int pHB);
+/*! \fn void iNovaSDK_SetVB(inova_ctx context, int VB)
  *  \brief Sets vertical blanking (CMOS sensors only).
  *  @param VB vertical blanking.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SetVB(int pVB);
-/*! \fn void iNovaSDK_GetHB()
+DLL_EXPORT void iNovaSDK_SetVB(inova_ctx context, int pVB);
+/*! \fn void iNovaSDK_GetHB(inova_ctx context)
  *  \brief Returns the horizontal blanking (CMOS sensors only).
  *  @return horizontal blanking
  */
-DLL_EXPORT int iNovaSDK_GetHB();
-/*! \fn void iNovaSDK_GetVB()
+DLL_EXPORT int iNovaSDK_GetHB(inova_ctx context);
+/*! \fn void iNovaSDK_GetVB(inova_ctx context)
  *  \brief Returns the vertical blanking (CMOS sensors only).
  *  @return vertical blanking
  */
-DLL_EXPORT int iNovaSDK_GetVB();
-/*! \fn void iNovaSDK_SetPixClock(int PixClock)
+DLL_EXPORT int iNovaSDK_GetVB(inova_ctx context);
+/*! \fn void iNovaSDK_SetPixClock(inova_ctx context, int PixClock)
  *  \brief Sets pixel clock (Aptina MT9M034/MT9M034M sensors only).
  *  @param PixClock pixel clock.
  *  @return no return value
  */
-DLL_EXPORT void iNovaSDK_SetPixClock(int Pck);
-/*! \fn void iNovaSDK_GetPixClock()
+DLL_EXPORT void iNovaSDK_SetPixClock(inova_ctx context, int Pck);
+/*! \fn void iNovaSDK_GetPixClock(inova_ctx context)
  *  \brief Returns the pixel clock (Aptina MT9M034/MT9M034M sensors only).
  *  @return pixel clock
  */
-DLL_EXPORT int iNovaSDK_GetPixClock();
-/*! \fn void iNovaSDK_GetSensorTemperature()
+DLL_EXPORT int iNovaSDK_GetPixClock(inova_ctx context);
+/*! \fn void iNovaSDK_GetSensorTemperature(inova_ctx context)
  *  \brief Returns the sensor's temperature (Aptina MT9M034/MT9M034M sensors only).
  *  @return sensor's temperature
  */
-DLL_EXPORT double iNovaSDK_GetSensorTemperature();
-/*! \fn void iNovaSDK_HasST4()
+DLL_EXPORT double iNovaSDK_GetSensorTemperature(inova_ctx context);
+/*! \fn void iNovaSDK_HasST4(inova_ctx context)
  *  \brief Returns the availability of an autoguider port.
  *  @return true if ST4 port available, false if none
  */
-DLL_EXPORT bool iNovaSDK_HasST4();
-/*! \fn void iNovaSDK_HasUART()
+DLL_EXPORT bool iNovaSDK_HasST4(inova_ctx context);
+/*! \fn void iNovaSDK_HasUART(inova_ctx context)
  *  \brief Returns the availability of a serial port.
  *  @return true if serial port available, false if none
  */
-DLL_EXPORT bool iNovaSDK_HasUART();
-/*! \fn void iNovaSDK_HasColorSensor()
+DLL_EXPORT bool iNovaSDK_HasUART(inova_ctx context);
+/*! \fn void iNovaSDK_HasColorSensor(inova_ctx context)
  *  \brief Returns the type of sensor.
  *  @return true if bayer color sensor, false if monochrome
  */
-DLL_EXPORT bool iNovaSDK_HasColorSensor();
-/*! \fn void iNovaSDK_GetPixelSizeX()
+DLL_EXPORT bool iNovaSDK_HasColorSensor(inova_ctx context);
+/*! \fn void iNovaSDK_GetPixelSizeX(inova_ctx context)
  *  \brief Returns the X size of the single pixel in microns.
  *  @return double X size of pixel
  */
-DLL_EXPORT double iNovaSDK_GetPixelSizeX();
-/*! \fn void iNovaSDK_GetPixelSizeY()
+DLL_EXPORT double iNovaSDK_GetPixelSizeX(inova_ctx context);
+/*! \fn void iNovaSDK_GetPixelSizeY(inova_ctx context)
  *  \brief Returns the Y size of the single pixel in microns.
  *  @return double Y size of pixel
  */
-DLL_EXPORT double iNovaSDK_GetPixelSizeY();
-/*! \fn void iNovaSDK_GetLastFrameTime()
+DLL_EXPORT double iNovaSDK_GetPixelSizeY(inova_ctx context);
+/*! \fn void iNovaSDK_GetLastFrameTime(inova_ctx context)
 *  \brief Returns the milliseconds elapsed from Epoch to the last frame taken.
 */
-DLL_EXPORT timeval iNovaSDK_GetLastFrameTime();
+DLL_EXPORT timeval iNovaSDK_GetLastFrameTime(inova_ctx context);
 
-#ifdef  __cplusplus
-}
-#endif
 #endif
