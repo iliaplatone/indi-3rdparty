@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.16)
 
 PROJECT(libindi-3rdparty CXX C)
 LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
@@ -187,6 +187,7 @@ option(WITH_ATIK "Install Atik Driver" On)
 option(WITH_TOUPBASE "Install Toupbase Driver" On)
 option(WITH_DREAMFOCUSER "Install DreamFocuser Driver" On)
 option(WITH_AVALON "Install Avalon StarGO Driver" On)
+option(WITH_AVALONUD "Install AvalonUD Drivers" On)
 option(WITH_BEEFOCUS "Install Bee Focuser Driver" On)
 option(WITH_SHELYAK "Install Shelyak Spectrograph Driver" On)
 option(WITH_SKYWALKER "Install AOK SkyWalker Mount Driver" On)
@@ -202,6 +203,7 @@ option(WITH_PLAYERONE "Install Player One Astronomy's Camera Driver" On)
 option(WITH_WEEWX_JSON "Install Weewx JSON Driver" On)
 option(WITH_ROLLOFFINO "Install RollOff ino Dome Driver" On)
 option(WITH_ASTROASIS "Install Astroasis Driver" On)
+option(WITH_OCS "Install OCS Driver" On)
 
 # FFMPEG required for INDI Webcam driver
 find_package(FFmpeg)
@@ -218,12 +220,6 @@ ENDIF(FFMPEG_FOUND)
 if (CMAKE_SYSTEM_PROCESSOR MATCHES "armv+" OR CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
 find_package(MMAL)
 endif()
-
-IF (MMAL_FOUND)
-option(WITH_RPICAM "Install Raspberry Pi High Quality Camera Driver" On)
-ELSE ()
-option(WITH_RPICAM "Install Raspberry Pi High Quality Camera Driver" Off)
-ENDIF(MMAL_FOUND)
 
 find_package(NUTClient)
 if (NUTCLIENT_FOUND)
@@ -347,6 +343,7 @@ endif(WITH_AHP_GT)
 
 #toupbase dependencies
 if (WITH_TOUPBASE)
+add_subdirectory(libmeadecam)
 add_subdirectory(libtoupcam)
 add_subdirectory(libaltaircam)
 add_subdirectory(libbressercam)
@@ -696,6 +693,11 @@ if (WITH_AVALON)
 add_subdirectory(indi-avalon)
 endif(WITH_AVALON)
 
+# AvalonUD
+if (WITH_AVALONUD)
+add_subdirectory(indi-avalonud)
+endif(WITH_AVALONUD)
+
 # Pentax
 if (WITH_PENTAX)
 find_package(PENTAX)
@@ -730,11 +732,6 @@ add_subdirectory(libsvbony)
 SET(LIBRARIES_FOUND FALSE)
 endif(SVBONY_FOUND)
 endif(WITH_SVBONY)
-
-# rpi_cam
-if (WITH_RPICAM)
-add_subdirectory(indi-rpicam)
-endif(WITH_RPICAM)
 
 # Bresser Exos 2 GoTo
 if (WITH_BRESSEREXOS2)
@@ -772,6 +769,11 @@ add_subdirectory(libastroasis)
 SET(LIBRARIES_FOUND FALSE)
 endif(ASTROASIS_FOUND)
 endif(WITH_ASTROASIS)
+
+# OCS
+if (WITH_OCS)
+add_subdirectory(indi-ocs)
+endif()
 
 # Check if libraries are found. If not, we must build them, install them, THEN run CMake again to build and instal the drivers. If all the libraraies are installed, then we build and install the drivers only now.
 if (LIBRARIES_FOUND)

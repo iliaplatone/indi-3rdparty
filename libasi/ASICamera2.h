@@ -39,7 +39,7 @@ while(1)
 	#define ASICAMERA_API 
 #endif
 
-#define ASICAMERA_ID_MAX 128
+#define ASICAMERA_ID_MAX 256
 
 typedef enum ASI_BAYER_PATTERN{
 	ASI_BAYER_RG=0,
@@ -177,6 +177,7 @@ typedef enum ASI_CONTROL_TYPE{ //Control type//
 	ASI_ANTI_DEW_HEATER,
 	ASI_FAN_ADJUST,
 	ASI_PWRLED_BRIGNT,
+	ASI_USBHUB_RESET,
 	ASI_GPS_SUPPORT,
 	ASI_GPS_START_LINE,
 	ASI_GPS_END_LINE,
@@ -667,6 +668,38 @@ ASICAMERA_API  ASI_ERROR_CODE ASIGetVideoData(int iCameraID, unsigned char* pBuf
 
 /***************************************************************************
 Descriptions:
+get data from the video buffer.the buffer is very small 
+you need to call this API as fast as possible, otherwise frame will be discarded
+so the best way is maintain one buffer loop and call this API in a loop
+please make sure the buffer size is biger enough to hold one image
+otherwise the this API will crash
+
+
+Paras:		
+int CameraID: this is get from the camera property use the API ASIGetCameraProperty
+unsigned char* pBuffer, caller need to malloc the buffer, make sure the size is big enough
+the size in byte:
+8bit mono:width*height
+16bit mono:width*height*2
+RGB24:width*height*3
+
+int iWaitms, this API will block and wait iWaitms to get one image. the unit is ms
+-1 means wait forever. this value is recommend set to exposure*2+500ms
+
+GPS_DATA *gpsData, if camera support GPS, the GPS data will pass to incomming parameter,
+the GPS data struct is define at the top of this file.
+
+return:
+ASI_SUCCESS : Operation is successful
+ASI_ERROR_CAMERA_CLOSED : camera didn't open
+ASI_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of boundary
+ASI_ERROR_TIMEOUT: no image get and timeout
+***************************************************************************/
+ASICAMERA_API  ASI_ERROR_CODE ASIGetVideoDataGPS(int iCameraID, unsigned char* pBuffer, long lBuffSize, int iWaitms, ASI_GPS_DATA *gpsData);
+
+
+/***************************************************************************
+Descriptions:
 PulseGuide of the ST4 port on. this function only work on the module which have ST4 port
 
 
@@ -778,6 +811,33 @@ ASI_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of b
 ASI_ERROR_TIMEOUT: no image get and timeout
 ***************************************************************************/
 ASICAMERA_API  ASI_ERROR_CODE ASIGetDataAfterExp(int iCameraID, unsigned char* pBuffer, long lBuffSize);
+
+/***************************************************************************
+Descriptions:
+get data after exposure.
+please make sure the buffer size is biger enough to hold one image
+otherwise the this API will crash
+
+
+Paras:		
+int CameraID: this is get from the camera property use the API ASIGetCameraProperty
+unsigned char* pBuffer, caller need to malloc the buffer, make sure the size is big enough
+the size in byte:
+8bit mono:width*height
+16bit mono:width*height*2
+RGB24:width*height*3
+
+GPS_DATA *gpsData, if camera support GPS, the GPS data will pass to incomming parameter,
+the GPS data struct is define at the top of this file.
+
+
+return:
+ASI_SUCCESS : Operation is successful
+ASI_ERROR_CAMERA_CLOSED : camera didn't open
+ASI_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of boundary
+ASI_ERROR_TIMEOUT: no image get and timeout
+***************************************************************************/
+ASICAMERA_API  ASI_ERROR_CODE ASIGetDataAfterExpGPS(int iCameraID, unsigned char* pBuffer, long lBuffSize, ASI_GPS_DATA *gpsData);
 
 /***************************************************************************
 Descriptions:
@@ -981,7 +1041,6 @@ ASI_ERROR_GPS_FPGA_ERR : failed to read or write data to FPGA
 ASI_ERROR_GPS_DATA_INVALID : GPS has not yet found the satellite or FPGA cannot read GPS data
 ***************************************************************************/
 ASICAMERA_API ASI_ERROR_CODE ASIGPSGetData(int iCameraID, ASI_GPS_DATA* startLineGPSData, ASI_GPS_DATA* endLineGPSData);
-
 #ifdef __cplusplus
 }
 #endif
