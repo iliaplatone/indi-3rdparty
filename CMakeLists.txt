@@ -200,6 +200,7 @@ option(FIX_MACOS_LIBS "Fix MacOS Libraries links" Off)
 
 # Define standard set of drivers to build (default linux target)
 option(WITH_EQMOD "Install EQMod Driver" On)
+option(WITH_ASTARBOX "Install AStarBox Driver" On)
 option(WITH_STARBOOK "Install Starbook Driver" On)
 option(WITH_STARBOOK_TEN "Install Starbook Ten Driver" On)
 option(WITH_CAUX "Install Celestron AUX Driver" On)
@@ -232,6 +233,7 @@ option(WITH_RTKLIB "Install RTKLIB Driver" On)
 option(WITH_ARMADILLO "Install Armadillo & Platypus Driver" On)
 option(WITH_NIGHTSCAPE "Install Nightscape 8300 Driver" On)
 option(WITH_ATIK "Install Atik Driver" On)
+option(WITH_ATIK_EFW "Install Atik Electronic Filter Wheel Driver" On)
 option(WITH_TOUPCAM "Install Toupcam Driver" On)
 option(WITH_ALTAIRCAM "Install Altaircam Driver" On)
 option(WITH_BRESSERCAM "Install Bressercam Driver" On)
@@ -267,6 +269,8 @@ option(WITH_TICFOCUSER-NG "Install TICFOCUSER-NG Driver" On)
 option(WITH_OPENOGMA "Install OpenOGMA Driver" On)
 option(WITH_LIBCAMERA "Install Libcamera Driver (Raspberry PI)" Off)
 option(WITH_BNO_IMU "Install BNO IMU Driver" Off)
+option(WITH_ICM_IMU "Install ICM IMU Driver" Off)
+# Due to Qt requirement
 option(WITH_CELESTRON_ORIGIN "Install Celestron Origin Driver" Off)
 
 # FFMPEG required for INDI Webcam driver
@@ -304,6 +308,8 @@ endif(NUTCLIENT_FOUND)
 
 # Add/remove cases for OSX
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+  # Celestron origin driver needs some work to make it work on MacOS due to Qt dependency
+  set (WITH_CELESTRON_ORIGIN Off)
   set(WITH_INOVAPLX Off)
   set(WITH_GIGE Off)
   set(WITH_PENTAX Off)
@@ -311,25 +317,14 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   set(WITH_AHP_XC Off)
   set(WITH_AHP_GT Off)
   set(WITH_TICFOCUSER-NG Off)
+  set(WITH_ASTARBOX Off)
   # The drivers below are not yet compatible with Apple Silicon since their libraries are not universal binaries
   if(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
-    set(WITH_ASICAM Off)
     set(WITH_SBIG Off)
     set(WITH_ATIK Off)
-    set(WITH_TOUPCAM Off)
-    set(WITH_ALTAIRCAM Off)
-    set(WITH_BRESSERCAM Off)
-    set(WITH_MALLINCAM Off)
-    set(WITH_MEADECAM Off)
-    set(WITH_NNCAM Off)
-    set(WITH_OGMACAM Off)
-    set(WITH_OMEGONPROCAM Off)
-    set(WITH_STARSHOOTG Off)
-    set(WITH_TSCAM Off)
-    set(WITH_SVBONYCAM Off)
-    set(WITH_QHY Off)
     set(WITH_SVBONY Off)
-    set(WITH_ASTROASIS Off)
+    set(WITH_SVBONYCAM Off)
+    set(WITH_ASTROASIS Off)    
   endif()
 endif()
 # Disable apogee, qhy and mi with gcc 4.8 and earlier versions
@@ -489,6 +484,11 @@ else(BUILD_LIBS)
     add_subdirectory(indi-aok)
   endif(WITH_SKYWALKER)
 
+  ## AStarBox
+  if(WITH_ASTARBOX)
+    add_subdirectory(indi-astarbox)
+  endif(WITH_ASTARBOX)
+
   ## Starbook
   if(WITH_STARBOOK)
     add_subdirectory(indi-starbook)
@@ -576,6 +576,11 @@ else(BUILD_LIBS)
       set(LIBRARIES_FOUND FALSE)
     endif(ATIK_FOUND)
   endif(WITH_ATIK)
+
+  ## ATIK EFW (serial)
+  if(WITH_ATIK_EFW)
+    add_subdirectory(indi-atik-efw)
+  endif(WITH_ATIK_EFW)
 
   set(ADD_TOUPBASE FALSE)
   ## TOUPBASE driver pack
@@ -856,6 +861,11 @@ else(BUILD_LIBS)
   if (WITH_BNO_IMU)
     add_subdirectory(indi-bno-imu)
   endif(WITH_BNO_IMU)
+
+  # ICM_IMU
+  if (WITH_ICM_IMU)
+    add_subdirectory(indi-icm-imu)
+  endif(WITH_ICM_IMU)
 
   # CELESTRON ORIGIN
   if (WITH_CELESTRON_ORIGIN)

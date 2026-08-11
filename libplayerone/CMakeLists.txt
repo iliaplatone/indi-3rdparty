@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 project (libplayerone)
 
-# Using PlayerOne Camera SDK Version 3.10.0 updated on 2025-12-25
+# Using PlayerOne Camera SDK Version 3.10.1 updated on 2025-04-30
 # Using PlayerOne EFW    SDK Version 1.2.3 updated on 2025-11-25
 
-set (POACAM_VERSION "3.10.0")
+set (POACAM_VERSION "3.10.1")
 set (POACAM_SOVERSION "3")
 
 set (POAEFW_VERSION "1.2.3")
@@ -50,7 +50,7 @@ elseif (UNIX AND NOT WIN32)
 
   # Install udev rules
   if (INDI_INSTALL_UDEV_RULES)
-    set (UDEVRULES_INSTALL_DIR "/lib/udev/rules.d" CACHE STRING "Base directory for udev rules")
+    set (UDEVRULES_INSTALL_DIR "/usr/lib/udev/rules.d" CACHE STRING "Base directory for udev rules")
     install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/99-player_one_astronomy.rules DESTINATION ${UDEVRULES_INSTALL_DIR})
   endif ()
 

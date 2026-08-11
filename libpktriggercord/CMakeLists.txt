@@ -13,7 +13,7 @@ include (GNUInstallDirs)
 find_package(INDI REQUIRED)
 
 option(INDI_INSTALL_UDEV_RULES "Install UDEV rules" On)
-set (UDEVRULES_INSTALL_DIR "/lib/udev/rules.d" CACHE STRING "Base directory for udev rules")
+set (UDEVRULES_INSTALL_DIR "/usr/lib/udev/rules.d" CACHE STRING "Base directory for udev rules")
 
 # Build library
 add_definitions (-DPKTDATADIR="${PK_DATADIR}")
@@ -25,13 +25,8 @@ include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src)
 include_directories (${CMAKE_CURRENT_SOURCE_DIR}/src/src/external/js0n)
 include_directories (${INDI_INCLUDE_DIR})
 
-# strip main function from pktriggercord
-file (READ ${CMAKE_CURRENT_SOURCE_DIR}/src/pktriggercord-cli.c PK_CLI)
-string (REGEX REPLACE "int main.*$" "" PK_CLI "${PK_CLI}")
-file (WRITE ${CMAKE_CURRENT_BINARY_DIR}/libpktriggercord.c "${PK_CLI}")
-
 set (libpktriggercord_SRCS
-  ${CMAKE_CURRENT_BINARY_DIR}/libpktriggercord.c # stripped
+  ${CMAKE_CURRENT_SOURCE_DIR}/libpktriggercord.c
 
   ${CMAKE_CURRENT_SOURCE_DIR}/src/pslr.c
 	${CMAKE_CURRENT_SOURCE_DIR}/src/pslr_model.c

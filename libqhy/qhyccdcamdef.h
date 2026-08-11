@@ -34,7 +34,7 @@
 /**
  * Type define for IMG1E */
 #define DEVICETYPE_IMG1E        1006
-
+#define DEVICETYPE_FX3G2 1007
 
 /* QHY5 seires */
 
@@ -491,6 +491,7 @@
 #define DEVICETYPE_QHY26800AGUIDE          4169
 
 #define DEVICETYPE_QHY811C                 4170
+#define DEVICETYPE_QHY992DEEP_COOLING      4171
 
 /**
  * Type define for QHY5IIIEND*/
@@ -1088,6 +1089,8 @@
  * Type define for QHY-DevelopDev*/
 #define QHY5IIICOMMON_MAX_WIDTH      19776//14304//6280//5336//4144//3864//5680//2712//3864// 2712// 1408    //8432  	
 #define QHY5IIICOMMON_MAX_HEIGHT     13124//10748//4210//4908//3064//2192//3710//1538//2180// 1538// 1052    //5648	  
+#define QHYFXNCOMMON_MAX_WIDTH      19776
+#define QHYFXNCOMMON_MAX_HEIGHT     13124
 
 /**
  * Type define for QHY247*/
@@ -1224,8 +1227,8 @@
 #define QHY461_MAX_WIDTH		   11760
 #define QHY461_MAX_HEIGHT		   8842
 
-#define QHY268C_MAX_WIDTH        6288
-#define QHY268C_MAX_HEIGHT       4210
+//#define QHY26800A_MAX_WIDTH        6288
+//#define QHY26800A_MAX_HEIGHT       4210
 
 //#define QHY410C_MAX_WIDTH        6112
 //#define QHY410C_MAX_HEIGHT       4140-100
@@ -1432,6 +1435,10 @@
 #define QHY26800AGUIDE_MAX_HEIGHT 1080
 
 /**
+ * Type define for QHY_DEMO (simulated camera for testing) */
+#define DEVICETYPE_QHY_DEMO     9999
+
+/**
  * Type define for UNKNOW */
 #define DEVICETYPE_UNKNOW       -1
 
@@ -1441,7 +1448,7 @@
 
 #define		MAX_CAMERA_NUMBER		200
 #define		CAMERA_ID_LENGTH		64   //(CAMERA_ID_LENGTH and ID_STR_LEN) more like a full ID length: QHY178-xxxxx(Mode included)
-#define   	MAXDEVICES 				15
+#define   	MAXDEVICES 				16
 
 
 #define		MAX_READMODE_NAME			256

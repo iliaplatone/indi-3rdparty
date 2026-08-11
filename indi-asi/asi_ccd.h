@@ -50,10 +50,4 @@ class ASICCD : public ASIBase
 
     protected:
         virtual bool ISNewText(const char *dev, const char *name, char *texts[], char *names[], int n) override;
-
-    private:
-        void loadNicknames();
-        void saveNicknames();
-        const std::string NICKNAME_FILE = "/.indi/ZWONicknames.xml";
-        std::map<std::string, std::string> mNicknames;
 };

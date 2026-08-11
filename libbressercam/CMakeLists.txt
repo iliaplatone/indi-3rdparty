@@ -3,8 +3,8 @@ project (libbressercam)
 
 option(INDI_INSTALL_UDEV_RULES "Install UDEV rules" On)
 
-set (LIBBRESSERCAM_VERSION "59.30594")
-set (LIBBRESSERCAM_SOVERSION "59")
+set (LIBBRESSERCAM_VERSION "60.32226")
+set (LIBBRESSERCAM_SOVERSION "60")
 
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules/")
 list (APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake_modules/")
@@ -36,7 +36,7 @@ elseif (UNIX AND NOT WIN32)
 
   # Install udev rules
   if (INDI_INSTALL_UDEV_RULES)
-    set (UDEVRULES_INSTALL_DIR "/lib/udev/rules.d" CACHE STRING "Base directory for udev rules")
+    set (UDEVRULES_INSTALL_DIR "/usr/lib/udev/rules.d" CACHE STRING "Base directory for udev rules")
     install (FILES ${CMAKE_CURRENT_SOURCE_DIR}/99-bressercam.rules DESTINATION ${UDEVRULES_INSTALL_DIR})
   endif()
 

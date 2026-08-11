@@ -33,6 +33,8 @@
 #include <unistd.h>
 #include <deque>
 #include <memory>
+#include <thread>
+#include <chrono>
 
 //#define SIMULATION
 #define WAIT_AFTER_OPEN_DEVICE
@@ -79,6 +81,13 @@ static class Loader
                     continue;
                 }
 
+                // Skip devices with invalid/error names reported by the SDK
+                if (strcasestr(info.Name, "error") != nullptr)
+                {
+                    IDLog("ERROR: PlayerOne EFW %d has invalid name '%s', skipping.", i + 1, info.Name);
+                    continue;
+                }
+
 #ifndef WAIT_AFTER_OPEN_DEVICE
                 PWState state;
                 result = POAGetPWState(id, &state);
@@ -91,7 +100,7 @@ static class Loader
                 // Wait for initial moving in case of just after plugged-in the device
                 while (state == PW_STATE_MOVING && elapsed_time < POA_EFW_TIMEOUT)
                 {
-                    usleep(interval * 1000);
+                    std::this_thread::sleep_for(std::chrono::milliseconds(interval));
                     result = POAGetPWState(id, &state);
                     if (result != PW_OK)
                     {
@@ -180,7 +189,7 @@ bool POAWHEEL::Connect()
         int elapsed_time = 0;
         while (state != PW_STATE_OPENED && elapsed_time < POA_EFW_TIMEOUT)
         {
-            usleep(interval * 1000);
+            std::this_thread::sleep_for(std::chrono::milliseconds(interval));
             result = POAGetPWState(fw_id, &state);
             if (result != PW_OK)
             {
@@ -404,7 +413,7 @@ bool POAWHEEL::SelectFilter(int f)
             int elapsed_time = 0;
             do
             {
-                usleep(interval * 1000);
+                std::this_thread::sleep_for(std::chrono::milliseconds(interval));
                 result = POAGetCurrentPosition(fw_id, &CurrentFilter);
                 elapsed_time += interval;
             }

@@ -60,7 +60,14 @@ QHYCCD::QHYCCD(const char *name, const char *camID) : FilterInterface(this)
 
     snprintf(this->m_Name, MAXINDINAME, "QHY CCD %.15s", name);
     snprintf(this->m_CamID, MAXINDINAME, "%s", camID);
-    setDeviceName(this->m_Name);
+
+    LOGF_INFO("*** This is the camera name: [%s]", m_Name);
+    LOGF_INFO("*** This is the camera ID: [%s]", m_CamID);
+
+    // Apply saved nickname from camera ID. Returns true if a nickname was found.
+    // If no nickname exists, fall back to the model-specific camera name.
+    if (!setDeviceNicknameFromId(m_CamID))
+        setDeviceName(this->m_Name);
 
     setVersion(INDI_QHY_VERSION_MAJOR, INDI_QHY_VERSION_MINOR);
 
@@ -138,6 +145,11 @@ bool QHYCCD::initProperties()
     IUFillNumber(&HumidityN[0], "HUMIDITY", "%", "%.2f", -100, 1000, 0.1, 0);
     IUFillNumberVector(&HumidityNP, HumidityN, 1, getDeviceName(), "CCD_HUMIDITY", "Humidity", MAIN_CONTROL_TAB,
                        IP_RO, 60, IPS_IDLE);
+
+    // CAA Rotator (angle in degrees, negative for reverse rotation)
+    IUFillNumber(&CAARotatorN[0], "CAA_ANGLE", "Angle (°)", "%.2f", -360, 360, 0.1, 0);
+    IUFillNumberVector(&CAARotatorNP, CAARotatorN, 1, getDeviceName(), "CAA_ROTATOR", "CAA Rotator", MAIN_CONTROL_TAB,
+                       IP_RW, 60, IPS_IDLE);
 
     // Cooler Mode
     IUFillSwitch(&CoolerModeS[COOLER_AUTOMATIC], "COOLER_AUTOMATIC", "Auto", ISS_ON);
@@ -252,6 +264,7 @@ bool QHYCCD::initProperties()
     IUFillTextVector(&GPSDataNowTP, GPSDataNowT, 4, getDeviceName(), "GPS_DATA_NOW", "Now", GPS_DATA_TAB, IP_RO, 60, IPS_IDLE);
 
     addAuxControls();
+    addNicknameControl();
     setDriverInterface(getDriverInterface());
 
     return true;
@@ -526,6 +539,29 @@ bool QHYCCD::updateProperties()
             defineProperty(&USBTrafficNP);
         }
 
+        if (HasCAA)
+        {
+            double min = 0, max = 0, step = 0;
+            if (!isSimulation())
+            {
+                int ret = GetQHYCCDParamMinMaxStep(m_CameraHandle, CONTROL_CAA_ROTATOR, &min, &max, &step);
+                if (ret == QHYCCD_SUCCESS)
+                {
+                    // Allow negative angle for reverse rotation
+                    CAARotatorN[0].min  = (min <= 0 ? min : -360);
+                    CAARotatorN[0].max  = max;
+                    CAARotatorN[0].step = (step > 0 ? step : 0.1);
+                }
+                CAARotatorN[0].value = GetQHYCCDParam(m_CameraHandle, CONTROL_CAA_ROTATOR);
+            }
+            defineProperty(&CAARotatorNP);
+            LOG_INFO("CAA Rotator: supported, control panel enabled");
+        }
+        else
+        {
+            LOG_INFO("CAA Rotator (control 95): not supported");
+        }
+
         defineProperty(&USBBufferNP);
 
         defineProperty(&SDKVersionTP);
@@ -606,6 +642,9 @@ bool QHYCCD::updateProperties()
 
         if (HasUSBTraffic)
             deleteProperty(USBTrafficNP.name);
+
+        if (HasCAA)
+            deleteProperty(CAARotatorNP.name);
 
         deleteProperty(USBBufferNP.name);
 
@@ -1033,6 +1072,17 @@ bool QHYCCD::Connect()
         }
 
         LOGF_INFO("Humidity Support: %s", HasHumidity ? "True" : "False");
+
+        ////////////////////////////////////////////////////////////////////
+        /// CAA Rotator Support (CONTROL_CAA_ROTATOR = 95)
+        ////////////////////////////////////////////////////////////////////
+        ret = IsQHYCCDControlAvailable(m_CameraHandle, CONTROL_CAA_ROTATOR);
+        if (ret == QHYCCD_SUCCESS)
+        {
+            HasCAA = true;
+        }
+        LOGF_INFO("CAA Rotator (control 95): %s (SDK result=%u)", HasCAA ? "supported" : "not supported", ret);
+
         ////////////////////////////////////////////////////////////////////
         /// Overscan Area Support
         ////////////////////////////////////////////////////////////////////
@@ -1966,6 +2016,30 @@ bool QHYCCD::ISNewNumber(const char *dev, const char *name, double values[], cha
         }
 
         //////////////////////////////////////////////////////////////////////
+        /// CAA Rotator Control (angle in degrees, negative = reverse)
+        //////////////////////////////////////////////////////////////////////
+        else if (!strcmp(name, CAARotatorNP.name))
+        {
+            double currentAngle = CAARotatorN[0].value;
+            IUUpdateNumber(&CAARotatorNP, values, names, n);
+            int rc = SetQHYCCDParam(m_CameraHandle, CONTROL_CAA_ROTATOR, CAARotatorN[0].value);
+            if (rc == QHYCCD_SUCCESS)
+            {
+                CAARotatorNP.s = IPS_OK;
+                saveConfig(true, CAARotatorNP.name);
+                LOGF_INFO("CAA Rotator angle set to %.2f°", CAARotatorN[0].value);
+            }
+            else
+            {
+                CAARotatorNP.s = IPS_ALERT;
+                CAARotatorN[0].value = currentAngle;
+                LOGF_ERROR("Failed to set CAA Rotator angle: %d", rc);
+            }
+            IDSetNumber(&CAARotatorNP, nullptr);
+            return true;
+        }
+
+        //////////////////////////////////////////////////////////////////////
         /// USB Buffer Control
         //////////////////////////////////////////////////////////////////////
         else if (!strcmp(name, USBBufferNP.name))
@@ -2281,6 +2355,9 @@ bool QHYCCD::saveConfigItems(FILE *fp)
 
     if (HasUSBTraffic)
         IUSaveConfigNumber(fp, &USBTrafficNP);
+
+    if (HasCAA)
+        IUSaveConfigNumber(fp, &CAARotatorNP);
 
     if (HasAmpGlow)
         IUSaveConfigSwitch(fp, &AMPGlowSP);
@@ -2610,6 +2687,11 @@ void QHYCCD::exposureSetRequest(ImageState request)
 void QHYCCD::logQHYMessages(const std::string &message)
 {
     LOGF_DEBUG("%s", message.c_str());
+}
+
+void QHYCCD::nicknameSet(const char *nickname)
+{
+    saveNicknameId(nickname, m_CamID);
 }
 
 void QHYCCD::debugTriggered(bool enable)

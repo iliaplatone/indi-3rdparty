@@ -134,6 +134,8 @@ struct _gphoto_driver
     gphoto_widget *iso_widget;
     gphoto_widget *exposure_widget;
     gphoto_widget *bulb_widget;
+    int eos_press_full_index;
+    int eos_release_full_index;
     gphoto_widget *autoexposuremode_widget;
     gphoto_widget *capturetarget_widget;
     gphoto_widget *viewfinder_widget;
@@ -653,8 +655,7 @@ static void *stop_bulb(void *arg)
                     DEBUGFDEVICE(device, INDI::Logger::DBG_DEBUG, "Using widget:%s", gphoto->bulb_widget->name);
                     if (strcmp(gphoto->bulb_widget->name, "eosremoterelease") == 0)
                     {
-                        //600D eosremoterelease RELEASE FULL
-                        gphoto_set_widget_num(gphoto, gphoto->bulb_widget, EOS_RELEASE_FULL);
+                        gphoto_set_widget_num(gphoto, gphoto->bulb_widget, gphoto->eos_release_full_index);
                     }
                     else
                     {
@@ -1056,8 +1057,8 @@ int gphoto_mirrorlock(gphoto_driver *gphoto, int msec)
                                EOS_MIRROR_LOCKUP_ENABLE);
 #endif
 
-        gphoto_set_widget_num(gphoto, gphoto->bulb_widget, EOS_PRESS_FULL);
-        gphoto_set_widget_num(gphoto, gphoto->bulb_widget, EOS_RELEASE_FULL);
+        gphoto_set_widget_num(gphoto, gphoto->bulb_widget, gphoto->eos_press_full_index);
+        gphoto_set_widget_num(gphoto, gphoto->bulb_widget, gphoto->eos_release_full_index);
 
         usleep(msec * 1000);
 
@@ -1244,7 +1245,7 @@ int gphoto_start_exposure(gphoto_driver *gphoto, uint32_t exptime_usec, int mirr
             // Check if the internal bulb widget is eosremoterelease, and if yes, set it accordingly
             if (strcmp(gphoto->bulb_widget->name, "eosremoterelease") == 0)
             {
-                gphoto_set_widget_num(gphoto, gphoto->bulb_widget, EOS_PRESS_FULL); //600D eosremoterelease PRESS FULL
+                gphoto_set_widget_num(gphoto, gphoto->bulb_widget, gphoto->eos_press_full_index);
             }
             // Otherwise use the regular bulb widget
             else
@@ -1388,6 +1389,13 @@ int gphoto_read_exposure_fd(gphoto_driver *gphoto, int fd)
         //Set exposure back to original value
         // JM 2018-08-06: Why do we really need to reset values here?
         //reset_settings(gphoto);
+
+        // A ptp reset is needed by Sony A7II and A7III
+        // However, this session reset wrecks the A7RIV, preventing capture of successive frames
+        if (strstr(gphoto->manufacturer, "Sony") && strstr(gphoto->model, "ILCE")
+                && !strstr(gphoto->model, "7RM4"))
+            gp_camera_exit(gphoto->camera, gphoto->context);
+
         return result;
     }
 
@@ -1731,6 +1739,8 @@ gphoto_driver *gphoto_open(Camera *camera, GPContext *context, const char *model
     gphoto->dsusb                  = nullptr;
     gphoto->force_bulb             = true;
     gphoto->last_sensor_temp       = -273.0; // 0 degrees Kelvin
+    gphoto->eos_press_full_index   = -1;
+    gphoto->eos_release_full_index = -1;
 
     result = gp_camera_get_config(gphoto->camera, &gphoto->config, gphoto->context);
     if (result < GP_OK)
@@ -1741,8 +1751,33 @@ gphoto_driver *gphoto_open(Camera *camera, GPContext *context, const char *model
         return nullptr;
     }
 
+    gphoto->manufacturer    = nullptr;
+    gphoto->model           = nullptr;
+
+    // Find Manufacturer
+    if ((widget = find_widget(gphoto, "manufacturer")) != nullptr)
+    {
+        DEBUGFDEVICE(device, INDI::Logger::DBG_DEBUG, "Manufacturer: %s", widget->value.text);
+        gphoto->manufacturer = widget->value.text;
+    }
+
+    // Find Model
+    if ((widget = find_widget(gphoto, "cameramodel")) != nullptr || (widget = find_widget(gphoto, "model")) != nullptr)
+    {
+        DEBUGFDEVICE(device, INDI::Logger::DBG_DEBUG, "Model: %s", widget->value.text);
+        gphoto->model = widget->value.text;
+    }
+    // Make sure manufacturer is set to something useful
+    if (gphoto->manufacturer == nullptr)
+        gphoto->manufacturer = gphoto->model;
+
+    if (strstr(gphoto->manufacturer, "Canon"))
+        gphoto->supports_temperature = true;
+
     // Set 'capture=1' for Canon DSLRs.  Won't harm other cameras
-    if ((widget = find_widget(gphoto, "capture")))
+    // ...avoid this for Sony camera (on A7II and A7III it triggers exposure on init)
+    if ( !(strstr(gphoto->manufacturer, "Sony") && strstr(gphoto->model, "ILCE")) &&
+            (widget = find_widget(gphoto, "capture")) )
     {
         gphoto_set_widget_num(gphoto, widget, TRUE);
         widget_free(widget);
@@ -1784,8 +1819,6 @@ gphoto_driver *gphoto_open(Camera *camera, GPContext *context, const char *model
     if (gphoto->format_widget == nullptr)
         gphoto->format_widget = find_widget(gphoto, "imagequality");
     gphoto->format          = -1;
-    gphoto->manufacturer    = nullptr;
-    gphoto->model           = nullptr;
     gphoto->upload_settings = GP_UPLOAD_CLIENT;
     gphoto->handle_sdcard_image = SAVE_IMAGE;
     gphoto->is_aborted = false;
@@ -1818,6 +1851,38 @@ gphoto_driver *gphoto_open(Camera *camera, GPContext *context, const char *model
         int ret = gphoto_read_widget(gphoto->bulb_widget);
         if (ret == GP_OK)
             show_widget(gphoto->bulb_widget, "\t\t");
+
+        // Dynamically discover eosremoterelease Press / Release indices
+        // from the widget choices, since the ordering varies between libgphoto2 versions.
+        // The Canon 600D (and similar) require "Press Full MF" (or "Press Full")
+        // to start BULB and "Release" (the last choice) to end it.
+        if (strcmp(gphoto->bulb_widget->name, "eosremoterelease") == 0)
+        {
+            gphoto->eos_press_full_index = -1;
+            gphoto->eos_release_full_index = -1;
+            for (int i = 0; i < gphoto->bulb_widget->choice_cnt; i++)
+            {
+                // Look for "Press Full MF" first, then any "Press Full" variant
+                if (strcmp(gphoto->bulb_widget->choices[i], "Press Full MF") == 0)
+                    gphoto->eos_press_full_index = i;
+                else if (gphoto->eos_press_full_index < 0 && strstr(gphoto->bulb_widget->choices[i], "Press Full"))
+                    gphoto->eos_press_full_index = i;
+
+                // Look for plain "Release" (higher priority) then "Release Full"
+                if (strcmp(gphoto->bulb_widget->choices[i], "Release") == 0)
+                    gphoto->eos_release_full_index = i;
+                else if (gphoto->eos_release_full_index < 0 && strcmp(gphoto->bulb_widget->choices[i], "Release Full") == 0)
+                    gphoto->eos_release_full_index = i;
+            }
+            // Fallback to known working values from the working test script
+            if (gphoto->eos_press_full_index < 0)
+                gphoto->eos_press_full_index = 4;
+            if (gphoto->eos_release_full_index < 0)
+                gphoto->eos_release_full_index = 7;
+            DEBUGFDEVICE(device, INDI::Logger::DBG_DEBUG,
+                         "eosremoterelease: Press Full index=%d, Release Full index=%d",
+                         gphoto->eos_press_full_index, gphoto->eos_release_full_index);
+        }
     }
     else
         DEBUGDEVICE(device, INDI::Logger::DBG_DEBUG, "No bulb widget found.");
@@ -1860,26 +1925,6 @@ gphoto_driver *gphoto_open(Camera *camera, GPContext *context, const char *model
         DEBUGFDEVICE(device, INDI::Logger::DBG_DEBUG, "CustomFuncex Widget: %s",
                      gphoto->customfuncex_widget->name);
     }
-
-    // Find Manufacturer
-    if ((widget = find_widget(gphoto, "manufacturer")) != nullptr)
-    {
-        DEBUGFDEVICE(device, INDI::Logger::DBG_DEBUG, "Manufacturer: %s", widget->value.text);
-        gphoto->manufacturer = widget->value.text;
-    }
-
-    // Find Model
-    if ((widget = find_widget(gphoto, "cameramodel")) != nullptr || (widget = find_widget(gphoto, "model")) != nullptr)
-    {
-        DEBUGFDEVICE(device, INDI::Logger::DBG_DEBUG, "Model: %s", widget->value.text);
-        gphoto->model = widget->value.text;
-    }
-    // Make sure manufacturer is set to something useful
-    if (gphoto->manufacturer == nullptr)
-        gphoto->manufacturer = gphoto->model;
-
-    if (strstr(gphoto->manufacturer, "Canon"))
-        gphoto->supports_temperature = true;
 
     // Check for user
     if (shutter_release_port)
@@ -2320,7 +2365,7 @@ int gphoto_manual_focus(gphoto_driver *gphoto, int speed, char *errMsg)
         }
         case GP_WIDGET_RANGE:
         {
-            int rval = speed;
+            float rval = speed;
 
             /* Range is on Nikon from -32768 <-> 32768 */
             if (strstr(device, "Nikon"))
@@ -2350,6 +2395,11 @@ int gphoto_manual_focus(gphoto_driver *gphoto, int speed, char *errMsg)
                         break;
                 }
             }
+
+            /* Reset to 0 first so the camera registers a change on repeated calls */
+            const float zero = 0;
+            gp_widget_set_value(gphoto->focus_widget->widget, &zero);
+            gphoto_set_config(gphoto->camera, gphoto->config, gphoto->context);
 
             rc = gp_widget_set_value(gphoto->focus_widget->widget, &rval);
             if (rc < GP_OK)

@@ -1,3 +1,21 @@
+libtoupcam (60.32226.20260808) jammy; urgency=medium
+
+  * Upstream release
+
+ -- touptek <touptek@touptek.com>  Mon, 10 Aug 2026 08:51:19 +0800
+
+libtoupcam (60.31631.20260606) jammy; urgency=medium
+
+  * Upstream release
+
+ -- touptek <touptek@touptek.com>  Sun, 07 Jun 2026 13:41:03 +0800
+
+libtoupcam (59.31026.20260322) jammy; urgency=medium
+
+  * Upstream release
+
+ -- touptek <touptek@touptek.com>  Mon, 23 Mar 2026 10:42:23 +0800
+
 libtoupcam (59.30594.20260120) jammy; urgency=medium
 
   * Upstream release
@@ -104,7 +122,7 @@ libtoupcam (1.49.1) bionic; urgency=medium
 
   * Upstream release
 
- -- Jasem Mutlaq <mutlaqja@ikarustech.com>  Tue, 15 June 2021 15:00:00 +0300
+ -- Jasem Mutlaq <mutlaqja@ikarustech.com>  Tue, 15 Jun 2021 15:00:00 +0300
 
 libtoupcam (1.48.0) bionic; urgency=medium
 

@@ -359,6 +359,13 @@ ASIBase::ASIBase()
     mTimerNS.setSingleShot(true);
 }
 
+ASIBase::ASIBase(const ASI_CAMERA_INFO &camInfo, const std::string &serialNumber)
+    : ASIBase()
+{
+    mCameraInfo = camInfo;
+    mSerialNumber = serialNumber;
+}
+
 ASIBase::~ASIBase()
 {
     if (isConnected())
@@ -381,8 +388,13 @@ bool ASIBase::initProperties()
 {
     INDI::CCD::initProperties();
 
-    // Add Debug Control.
+    // Add Debug and Nickname Controls from DefaultDevice.
     addDebugControl();
+    if (!mSerialNumber.empty())
+    {
+        // asi_single_ccd does not set serial number
+        addNicknameControl();
+    }
 
     CoolerSP[0].fill("COOLER_ON",  "ON",  ISS_OFF);
     CoolerSP[1].fill("COOLER_OFF", "OFF", ISS_ON);
@@ -421,9 +433,6 @@ bool ASIBase::initProperties()
 
     SerialNumberTP[0].fill("SN", "SN", mSerialNumber);
     SerialNumberTP.fill(getDeviceName(), "Serial Number", "Serial Number", INFO_TAB, IP_RO, 60, IPS_IDLE);
-
-    NicknameTP[0].fill("nickname", "nickname", mNickname);
-    NicknameTP.fill(getDeviceName(), "NICKNAME", "Nickname", INFO_TAB, IP_RW, 60, IPS_IDLE);
 
     int maxBin = 1;
 
@@ -548,7 +557,6 @@ bool ASIBase::updateProperties()
         if (!mSerialNumber.empty())
         {
             defineProperty(SerialNumberTP);
-            defineProperty(NicknameTP);
         }
         defineProperty(USBResetSP);
     }
@@ -581,7 +589,6 @@ bool ASIBase::updateProperties()
         if (!mSerialNumber.empty())
         {
             deleteProperty(SerialNumberTP);
-            deleteProperty(NicknameTP);
         }
         deleteProperty(ADCDepthNP);
         deleteProperty(USBResetSP);
@@ -1006,8 +1013,24 @@ bool ASIBase::ISNewSwitch(const char *dev, const char *name, ISState *states, ch
     return INDI::CCD::ISNewSwitch(dev, name, states, names, n);
 }
 
+void ASIBase::nicknameSet(const char *nickname)
+{
+    if (!mSerialNumber.empty())
+    {
+        saveNicknameId(nickname, mSerialNumber.c_str());
+    }
+}
+
 bool ASIBase::setVideoFormat(uint8_t index)
 {
+    // Guard against out-of-bounds index (e.g. stale/corrupt saved config)
+    if (VideoFormatSP.isEmpty() || index >= VideoFormatSP.count())
+    {
+        LOGF_WARN("Invalid video format index %d (max %d), ignoring.", index,
+                  VideoFormatSP.isEmpty() ? 0 : VideoFormatSP.count() - 1);
+        return false;
+    }
+
     auto currentFormat = getImageType();
     // If requested type is 16bit but we are already on 8bit and camera is 120, then ignore request
     if (currentFormat != ASI_IMG_RAW16 && index == ASI_IMG_RAW16 && (strstr(getDeviceName(), "ASI120")

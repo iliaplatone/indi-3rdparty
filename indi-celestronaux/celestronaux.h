@@ -4,6 +4,7 @@
     Copyright (C) 2020 Paweł T. Jochym
     Copyright (C) 2020 Fabrizio Pollastri
     Copyright (C) 2020-2022 Jasem Mutlaq
+    Copyright (C) 2026 Sébastien Valat
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -81,6 +82,18 @@ class CelestronAUX :
         {
             FORWARD,
             REVERSE
+        };
+
+        enum TrackingWay
+        {
+            BY_RATE,
+            BY_MODE,
+        };
+
+        enum GuidingMode
+        {
+            GUIDE_BY_PULSE,
+            GUIDE_BY_RATE_SHIFT
         };
 
         enum MountVersion
@@ -196,6 +209,7 @@ class CelestronAUX :
         bool SetTrackMode(uint8_t mode) override;
         bool SetTrackRate(double raRate, double deRate) override;
         void resetTracking();
+        void restoreTrackingRateMode(INDI_HO_AXIS axis);
 
         /**
          * @brief TrackByRate Set axis tracking rate in arcsecs/sec.
@@ -289,7 +303,14 @@ class CelestronAUX :
         // Guiding offset in steps
         // For each pulse, we modify the offset so that we can add it to our current tracking traget
         double m_GuideOffset[2] = {0, 0};
+
+        // Remind which tracking mode & speed we have to restore after a GUIDING RATE_SHIFT update
         double m_TrackRates[2] = {TRACKRATE_SIDEREAL, 0};
+        uint16_t m_TrackModes[2] = {AUX_SIDEREAL, AUX_STOP};
+        TrackingWay m_TrackWay[2] = {BY_MODE, BY_MODE};
+
+        // Should we guid by using PULSE command or by updating temporarly the GUIDING
+        GuidingMode m_GuideMode = GUIDE_BY_PULSE;
 
         TelescopePierSide m_TargetPierSide {PIER_UNKNOWN};
 
@@ -368,6 +389,7 @@ class CelestronAUX :
         int aux_tty_read(char *buf, int bufsiz, int timeout, int *n);
         int aux_tty_write (char *buf, int bufsiz, float timeout, int *n);
         bool tty_set_speed(speed_t speed);
+        bool configureSerialPort(bool useFlowControl);
 
         // connection
         bool m_IsRTSCTS {false};
@@ -378,17 +400,21 @@ class CelestronAUX :
         ///////////////////////////////////////////////////////////////////////////////
 
         // Firmware
-        INDI::PropertyText FirmwareTP {9};
+        INDI::PropertyText FirmwareTP {0};
         enum {FW_MODEL, FW_HC, FW_MB, FW_AZM, FW_ALT, FW_WiFi, FW_BAT, FW_GPS, FW_FOCUS};
-        // Mount type
-        //INDI::PropertySwitch MountTypeSP {3};
+
+        // Evolution Battery Status
+        INDI::PropertyText BatteryStatusTP {3};
+        enum { BATT_LEVEL, BATT_VOLTAGE, BATT_STATUS };
+        bool getBatteryStatus();
+        struct timeval lastBatteryUpdate {0, 0};
 
         // Mount Cord wrap Toogle
         INDI::PropertySwitch CordWrapToggleSP {2};
 
         // Mount Coord wrap Position
-        INDI::PropertySwitch CordWrapPositionSP {4};
-        enum { CORDWRAP_N, CORDWRAP_E, CORDWRAP_S, CORDWRAP_W };
+        INDI::PropertySwitch CordWrapPositionSP {8};
+        enum { CORDWRAP_N, CORDWRAP_NE, CORDWRAP_E, CORDWRAP_SE, CORDWRAP_S, CORDWRAP_SW, CORDWRAP_W, CORDWRAP_NW };
 
         // Cordwrap base (0-encoder/True directions)
         // Use 0-encoders / Sky directions as base for parking and cordwrap
@@ -415,6 +441,10 @@ class CelestronAUX :
 
         // Guide Rate
         INDI::PropertyNumber GuideRateNP {2};
+
+        // Guide Rate
+        INDI::PropertySwitch GuidePulseMode {2};
+        enum { PULSE_MODE_PULSE, PULSE_MODE_GUIDE_RATE };
 
         // Encoders
         INDI::PropertyNumber EncoderNP {2};
@@ -482,12 +512,22 @@ class CelestronAUX :
         static constexpr double STEPS_PER_HOUR {STEPS_PER_REVOLUTION / 24.0};
         static constexpr double HOURS_PER_STEP {24.0 / STEPS_PER_REVOLUTION};
 
-        // Measured rate that would result in 1 step/sec
-        static constexpr uint32_t GAIN_STEPS {80};
+        // Measured rate that would result in 1 step/sec - only approximate
+        // static constexpr uint32_t GAIN_STEPS {80};
+        
+        // Rate based on geometric analysis and testing against SkySafari 7, simulator and real mount:
+        // Logical unit for guiding commands is 1/1024 arcsec/sec.
+        // Steps per arcsecond = 16777216 / (360 * 3600) = 16777216 / 1296000
+        // Scaling Factor (Units -> Steps/sec) = 1024 * (1296000 / 16777216)
+        // Factor = (1024 * 1296000) / 16777216  = 1327104000 / 16777216
+        // Simplified Rational Factor = 10125 / 128
+        // Steps/sec = Value * (10125 / 128) = Value * 79.1015625
+        static constexpr double GAIN_STEPS {10125.0 / 128};
 
         // MC_SET_POS_GUIDERATE & MC_SET_NEG_GUIDERATE use 24bit number rate in
         static constexpr uint8_t RATE_PER_ARCSEC {4};
 
+        static constexpr size_t MAX_AUX_PACKET_SIZE {258};
         static constexpr uint32_t BUFFER_SIZE {10240};
         // seconds
         static constexpr uint8_t READ_TIMEOUT {1};
@@ -497,6 +537,7 @@ class CelestronAUX :
         static constexpr const char *CORDWRAP_TAB {"Coord Wrap"};
         static constexpr const char *MOUNTINFO_TAB {"Mount Info"};
         // Track modes
+        static constexpr uint16_t AUX_STOP {0x0000};
         static constexpr uint16_t AUX_SIDEREAL {0xffff};
         static constexpr uint16_t AUX_SOLAR {0xfffe};
         static constexpr uint16_t AUX_LUNAR {0xfffd};
