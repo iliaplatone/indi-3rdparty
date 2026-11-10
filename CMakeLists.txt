@@ -22,6 +22,23 @@ if(APPLE)
   ## This one is needed for Craft
   include_directories("${CMAKE_INSTALL_PREFIX}/include")
 
+  ## INDI and most vendor SDKs use @rpath install names (e.g. @rpath/libindidriver.2.dylib).
+  ## CMake strips the build RPATH on install, leaving installed drivers with no LC_RPATH, so
+  ## keep the directories of linked libraries outside the build tree in the install RPATH.
+  ## Respect any value passed on the command line (e.g. by Craft).
+  if(NOT DEFINED CMAKE_INSTALL_RPATH_USE_LINK_PATH)
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH ON)
+  endif()
+  ## Vendor SDKs (ASI, QHY, Atik, ...) load @rpath/libusb-1.0.0.dylib, which CMake cannot see
+  ## since drivers link libusb by its absolute install name, so add the libusb directory too.
+  if(NOT DEFINED CMAKE_INSTALL_RPATH)
+    find_package(USB1 QUIET)
+    if(USB1_FOUND)
+      get_filename_component(_usb1_lib_dir "${USB1_LIBRARY}" DIRECTORY)
+      set(CMAKE_INSTALL_RPATH "${_usb1_lib_dir}")
+    endif()
+  endif()
+
   # FIX_LIBRARY_LINK Macro
   # This macro will check MacOS Binary Libraries provided by third parties for external links that could cause linking and packaging problems
   # If the FIX_MACOS_LIBS option is enabled when building, it will also attempt to fix the problems, which should then allow the build to continue.
@@ -203,6 +220,7 @@ option(WITH_EQMOD "Install EQMod Driver" On)
 option(WITH_ASTARBOX "Install AStarBox Driver" On)
 option(WITH_STARBOOK "Install Starbook Driver" On)
 option(WITH_STARBOOK_TEN "Install Starbook Ten Driver" On)
+option(WITH_TYR "Install Prometheus Astro Tyr telescope driver" On)
 option(WITH_CAUX "Install Celestron AUX Driver" On)
 option(WITH_SX "Install StarLight Xpress Driver" On)
 option(WITH_MAXDOME "Install MaxDomeII Driver" On)
@@ -263,6 +281,7 @@ option(WITH_PLAYERONE "Install Player One Astronomy's Camera Driver" On)
 option(WITH_WEEWX_JSON "Install Weewx JSON Driver" On)
 option(WITH_ROLLOFFINO "Install RollOff ino Dome Driver" On)
 option(WITH_ASTROASIS "Install Astroasis Driver" On)
+option(WITH_SCOPELINK "Install ScopeLink Driver" On)
 option(WITH_OCS "Install OCS Driver" On)
 option(WITH_GPIO "Install GPIO Driver" On)
 option(WITH_TICFOCUSER-NG "Install TICFOCUSER-NG Driver" On)
@@ -306,6 +325,18 @@ else(NUTCLIENT_FOUND)
   option(WITH_NUT "Install INDI NUT Driver" Off)
 endif(NUTCLIENT_FOUND)
 
+find_package(Mosquitto)
+if(MOSQUITTO_FOUND)
+  message(STATUS "Since libmosquitto was found, INDI Weather MQTT Driver can be built")
+  option(WITH_WEATHER_MQTT "Install INDI Weather MQTT Driver" On)
+else(MOSQUITTO_FOUND)
+  message(
+    STATUS
+    "Since libmosquitto was not found, INDI Weather MQTT Driver will not be built"
+  )
+  option(WITH_WEATHER_MQTT "Install INDI Weather MQTT Driver" Off)
+endif(MOSQUITTO_FOUND)
+
 # Add/remove cases for OSX
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   # Celestron origin driver needs some work to make it work on MacOS due to Qt dependency
@@ -321,8 +352,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   # The drivers below are not yet compatible with Apple Silicon since their libraries are not universal binaries
   if(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
     set(WITH_SBIG Off)
-    set(WITH_ATIK Off)
-    set(WITH_SVBONY Off)
     set(WITH_SVBONYCAM Off)
     set(WITH_ASTROASIS Off)    
   endif()
@@ -469,6 +498,10 @@ if(BUILD_LIBS)
 
   # This is the main 3rd Party build.  It runs if the Build Libs option is not selected.
 else(BUILD_LIBS)
+  ## Prometheus Astro Tyr
+  if(WITH_TYR)
+    add_subdirectory(indi-tyr)
+  endif(WITH_TYR)
   ## TicFocuser-ng
   if(WITH_TICFOCUSER-NG)
     add_subdirectory(indi-ticfocuser-ng)
@@ -523,6 +556,11 @@ else(BUILD_LIBS)
   if(WITH_ROLLOFFINO)
     add_subdirectory(indi-rolloffino)
   endif(WITH_ROLLOFFINO)
+
+  ## ScopeLink
+  if(WITH_SCOPELINK)
+    add_subdirectory(indi-scopelink)
+  endif(WITH_SCOPELINK)
 
   ## Shelyak
   if(WITH_SHELYAK)
@@ -748,6 +786,11 @@ else(BUILD_LIBS)
 
   if(WITH_WEEWX_JSON)
     add_subdirectory(indi-weewx-json)
+  endif()
+
+  # Weather MQTT
+  if(WITH_WEATHER_MQTT)
+    add_subdirectory(indi-weather-mqtt)
   endif()
 
   if(WITH_NIGHTSCAPE)

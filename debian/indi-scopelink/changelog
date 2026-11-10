@@ -1,0 +1,30 @@
+indi-scopelink (1.2) jammy; urgency=medium
+
+  * Interface version 1.2 is supported: the controller names its sensor module, and the status
+    frame carries humidity, dew point and three axes of acceleration where the module has them.
+  * New Climate and Tilt telemetry, smoothed, with the margin above the dew point.
+  * New tube orientation, altitude and roll, with an optional level reference kept in the
+    driver's configuration.
+  * Temperatures are converted with 273.15 rather than 273.
+  * The rotator's sync offset is restored from the saved configuration rather than reset to zero.
+  * A firmware update reports read protection the way the newer boot loader does.
+
+ -- Bence Toth <bence.toth@astrolabs.hu>  Mon, 26 Oct 2026 12:00:00 +0100
+
+indi-scopelink (1.1) jammy; urgency=medium
+
+  * Hardware generation 4 and interface version 1.1 are supported.
+  * The controller's motor assignment is read at connect: which motor focuses, which rotates and
+    which ones the front flap is made of.
+  * New rotator interface, offered on a controller with a motor assigned and calibrated for it.
+  * Configuration parameters are generated from the firmware's own description, with its limits,
+    its units and its groups. Property names changed with them.
+  * The udev rule matches the USB identifiers assigned to Astrolabs, and /dev/scopelink is back.
+
+ -- Bence Toth <bence.toth@astrolabs.hu>  Mon, 07 Sep 2026 21:00:00 +0200
+
+indi-scopelink (1.0) jammy; urgency=medium
+
+  * Initial release.
+
+ -- Bence Toth <bence.toth@astrolabs.hu>  Tue, 11 Aug 2026 21:00:00 +0200

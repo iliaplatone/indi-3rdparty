@@ -877,6 +877,14 @@ bool GPhotoCCD::Connect()
                       "storage, please unmount it and disable auto-mount.");
             return false;
         }
+
+        // gphoto_open() starts from the library defaults (force BULB on, 60 seconds download timeout, save SD card image).
+        // Apply the current property values so they survive a disconnect/connect and match what the client sees.
+        gphoto_force_bulb(gphotodrv, ForceBULBSP[INDI_ENABLED].getState() == ISS_ON);
+        gphoto_set_download_timeout(gphotodrv, DownloadTimeoutNP[0].getValue());
+        const auto sdCardImageIndex = SDCardImageSP.findOnSwitchIndex();
+        if (sdCardImageIndex >= 0)
+            gphoto_handle_sdcard_image(gphotodrv, static_cast<CameraImageHandling>(sdCardImageIndex));
     }
 
     if (isSimulation())
@@ -1013,6 +1021,9 @@ bool GPhotoCCD::Disconnect()
 {
     if (isSimulation())
         return true;
+    // Release the extended options while their widgets are still valid: gphoto_close() frees them,
+    // and updateProperties() would otherwise read the freed widgets in HideExtendedOptions().
+    HideExtendedOptions();
     gphoto_close(gphotodrv);
     gphotodrv        = nullptr;
     frameInitialized = false;
@@ -1357,6 +1368,52 @@ bool GPhotoCCD::grabImage()
             PrimaryCCD.setImageExtension("fits");
         else
             PrimaryCCD.setImageExtension("xisf");
+
+        // The raw decoder returns the full sensor buffer, which can be larger
+        // than the effective (visible) image: e.g. the Nikon D7200 decodes to
+        // 6016x4016 while its effective image is 6000x4000 (the extra rows and
+        // columns are masked/optical-black border pixels). gphoto2 reports the
+        // effective size via gp_camera_file_get_info, so crop the decoded buffer
+        // to that size before setting resolution/frame. This keeps the FITS
+        // dimensions and the CCD_FRAME/CCD_INFO limits consistent with Native
+        // transport mode.
+        if (!isSimulation())
+        {
+            int effectiveW = 0, effectiveH = 0;
+            gphoto_get_dimensions(gphotodrv, &effectiveW, &effectiveH);
+
+            if (effectiveW > 0 && effectiveH > 0 &&
+                    effectiveW <= w && effectiveH <= h &&
+                    (effectiveW != w || effectiveH != h))
+            {
+                const int srcLineBytes = w * bpp / 8;
+                const int dstLineBytes = effectiveW * bpp / 8;
+
+                if (naxis == 2)
+                {
+                    for (int row = 0; row < effectiveH; row++)
+                        memmove(memptr + row * dstLineBytes,
+                                memptr + row * srcLineBytes, dstLineBytes);
+                }
+                else if (naxis == 3)
+                {
+                    const int srcPlaneBytes = w * h * bpp / 8;
+                    const int dstPlaneBytes = effectiveW * effectiveH * bpp / 8;
+                    for (int plane = 0; plane < 3; plane++)
+                    {
+                        uint8_t *srcPlane = memptr + plane * srcPlaneBytes;
+                        uint8_t *dstPlane = memptr + plane * dstPlaneBytes;
+                        for (int row = 0; row < effectiveH; row++)
+                            memmove(dstPlane + row * dstLineBytes,
+                                    srcPlane + row * srcLineBytes, dstLineBytes);
+                    }
+                }
+
+                w = effectiveW;
+                h = effectiveH;
+                memsize = effectiveW * effectiveH * bpp / 8 * ((naxis == 3) ? 3 : 1);
+            }
+        }
 
         uint16_t subW = PrimaryCCD.getSubW();
         uint16_t subH = PrimaryCCD.getSubH();

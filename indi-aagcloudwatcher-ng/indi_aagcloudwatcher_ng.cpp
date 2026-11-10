@@ -140,6 +140,51 @@ bool AAGCloudWatcher::initProperties()
     return true;
 }
 
+/**********************************************************************
+ ** Restore the saved settings.
+ **
+ ** This must happen after the base class has defined the properties:
+ ** the driver-side dispatcher rejects a value for a property that has not
+ ** been defined yet, so calling loadConfig() from initProperties() silently
+ ** does nothing.
+ **
+ ** Loading goes through the regular ISNew*() handlers, so driver state derived
+ ** from these properties (anemometer type, heating algorithm) is set up as well.
+ ** Doing it here instead of relying on the client pressing "Load" keeps the
+ ** settings working under a plain indiserver too.
+ **********************************************************************/
+void AAGCloudWatcher::ISGetProperties(const char *dev)
+{
+    INDI::Weather::ISGetProperties(dev);
+
+    if (!m_ConfigLoaded)
+    {
+        m_ConfigLoaded = true;
+        for (const auto &property : CONFIGURABLE_PROPERTIES)
+            loadConfig(true, property);
+    }
+}
+
+/**********************************************************************
+ ** Persist the user-configurable settings.
+ **********************************************************************/
+bool AAGCloudWatcher::saveConfigItems(FILE *fp)
+{
+    INDI::Weather::saveConfigItems(fp);
+
+    // buildSkeleton() may have failed (missing indi_aagcloudwatcher_ng_sk.xml), in
+    // which case these properties do not exist. save() on an invalid property is a
+    // no-op, but check explicitly so the intent is clear.
+    for (const auto &name : CONFIGURABLE_PROPERTIES)
+    {
+        auto property = getProperty(name);
+        if (property.isValid())
+            property.save(fp);
+    }
+
+    return true;
+}
+
 IPState AAGCloudWatcher::updateWeather()
 {
     // in case elevation updated as GPS gets a better fix
@@ -272,9 +317,23 @@ bool AAGCloudWatcher::ISNewNumber(const char *dev, const char *name, double valu
                 return true;
             }
 
+            // Broadcast the loaded/changed value to clients. Without a driver
+            // handler, sqmLimit falls through to DefaultDevice::ISNewNumber, which
+            // update()s the value internally but never apply()s it, so a config
+            // load would silently leave connected clients on the skeleton default.
+            if (nvp.isNameMatch("sqmLimit"))
+            {
+                nvp.update(values, names, n);
+                nvp.setState(IPS_OK);
+                nvp.apply();
+
+                return true;
+            }
+
             if (nvp.isNameMatch("skyCorrection"))
             {
-                for (int i = 0; i < 5; i++)
+                // Bound by n, not by the vector size: a client may send a subset.
+                for (int i = 0; i < n; i++)
                 {
                     if (values[i] < -999)
                     {
@@ -310,11 +369,18 @@ bool AAGCloudWatcher::ISNewSwitch(const char *dev, const char *name, ISState *st
 
             if (svp.isNameMatch("heatingAlgorithm"))
             {
-                LOGF_INFO("Changing heating algorithm to %s\n", names[0]);
-                usePIDforHeating = (strcmp(names[0], "pid") == 0);
                 svp.update(states, names, n);
                 svp.setState(IPS_OK);
                 svp.apply();
+
+                // Derive the flag from the resulting switch state rather than from
+                // names[0]. A GUI client sends only the switch it turned on, but a
+                // configuration load sends the whole vector, in which case names[0]
+                // is not necessarily the selected one.
+                auto pid = svp.findWidgetByName("pid");
+                usePIDforHeating = (pid != nullptr && pid->getState() == ISS_ON);
+                LOGF_INFO("Changing heating algorithm to %s", usePIDforHeating ? "pid" : "original");
+
                 return true;
             }
 
@@ -394,12 +460,14 @@ bool AAGCloudWatcher::ISNewSwitch(const char *dev, const char *name, ISState *st
 
             if (svp.isNameMatch("anemometerType"))
             {
-                svp.update(states, names, 2);
+                // Use n, not a hard-coded 2: a client may send only the switch it
+                // turned on, and reading past the end of states[]/names[] is UB.
+                svp.update(states, names, n);
                 svp.setState(IPS_OK);
                 svp.apply();
 
                 auto sp = svp.findWidgetByName("BLACK");
-                if (sp->getState() == ISS_ON)
+                if (sp != nullptr && sp->getState() == ISS_ON)
                 {
                     cwc->setAnemometerType(BLACK);
                 }

@@ -2099,9 +2099,6 @@ bool QHYCCD::ISNewNumber(const char *dev, const char *name, double values[], cha
             }
             else
             {
-                /* re-initialize the camera parameters */
-                QHYCCD::setupParams();
-                saveConfig(true, ReadModeNP.name);
                 ReadModeNP.s = IPS_OK;
             }
 
@@ -2361,6 +2358,9 @@ bool QHYCCD::saveConfigItems(FILE *fp)
 
     if (HasAmpGlow)
         IUSaveConfigSwitch(fp, &AMPGlowSP);
+
+    if (HasOverscanArea)
+        IUSaveConfigSwitch(fp, &OverscanAreaSP);
 
     if (HasGPS)
     {

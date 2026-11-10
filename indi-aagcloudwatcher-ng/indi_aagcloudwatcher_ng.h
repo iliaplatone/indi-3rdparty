@@ -45,6 +45,7 @@ public:
     virtual ~AAGCloudWatcher() override;
 
     virtual bool initProperties() override;
+    virtual void ISGetProperties(const char *dev) override;
     virtual bool ISNewNumber(const char *dev, const char *name, double values[], char *names[], int n) override;
     virtual bool ISNewSwitch(const char *dev, const char *name, ISState *states, char *names[], int n) override;
 
@@ -58,9 +59,26 @@ public:
 protected:
     virtual bool Handshake() override;
     virtual IPState updateWeather() override;
+    virtual bool saveConfigItems(FILE *fp) override;
 
 
 private:
+    // Skeleton properties holding user settings that must survive a restart.
+    // Shared by saveConfigItems() and ISGetProperties() so the two cannot drift apart.
+    // "deviceSwitch" is deliberately excluded: it drives the unit's relay and must
+    // not be re-asserted automatically at startup.
+    static constexpr const char *CONFIGURABLE_PROPERTIES[] =
+    {
+        "skyCorrection",
+        "sqmLimit",
+        "anemometerType",
+        "heaterParameters",
+        "heatingAlgorithm",
+        "heaterPIDParameters"
+    };
+
+    bool m_ConfigLoaded {false};
+
     float lastReadPeriod {0};
     CloudWatcherConstants constants;
     CloudWatcherController *cwc {nullptr};
